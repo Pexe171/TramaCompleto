@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { apiClient, resolveAssetUrl } from '../../../lib/apiClient';
+import { apiClient, resolveAssetUrl } from '../../../../lib/apiClient';
 
 const initialFormState = {
   title: '',
