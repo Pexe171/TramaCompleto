@@ -101,9 +101,9 @@ export default async function HomePage() {
     <main className="bg-black text-white">
       <Header />
       <HeroSection editoria={latestEditoria} />
-      <UltimasPostagens posts={ultimasPostagens} />
       <QuemSomos title={quemSomosTitle} contentHtml={quemSomosContent} />
       <NossasEditorias editorias={editorias} />
+      <UltimasPostagens posts={ultimasPostagens} />
     </main>
   );
 }
