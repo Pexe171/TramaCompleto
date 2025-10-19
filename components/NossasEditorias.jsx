@@ -10,6 +10,10 @@ const formatEditorias = (editorias) => {
     .map((editoria) => ({
       title: editoria.title,
       coverImage: resolveAssetUrl(editoria.coverImage) || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png',
+      coverFocusX: editoria.coverImageFocusX ?? 50,
+      coverFocusY: editoria.coverImageFocusY ?? 50,
+      coverScale: editoria.coverImageScale ?? 100,
+      descriptionImage: editoria.descriptionImage ? resolveAssetUrl(editoria.descriptionImage) : null,
       href: editoria.slug ? `/editorias/${editoria.slug}` : '#',
     }));
 };
@@ -47,13 +51,27 @@ export default function NossasEditorias({ editorias }) {
               <div className={items.length % 2 !== 0 && index === items.length - 1 ? 'w-full md:w-1/2' : 'w-full'}>
                 <a
                   href={editoria.href}
-                  className="block group aspect-video rounded-[3rem] overflow-hidden relative shadow-lg shadow-black/50 hover:shadow-red-500/30 transition-shadow duration-300"
+                  className="block group aspect-video rounded-[3rem] overflow-hidden relative shadow-lg shadow-black/50 hover:shadow-red-500/30 transition-all duration-300"
                 >
-                  <img
-                    src={editoria.coverImage}
-                    alt={`Capa da editoria ${editoria.title}`}
-                    className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                  <div
+                    className="absolute inset-0 transition-transform duration-300 group-hover:scale-105"
+                    style={{
+                      backgroundImage: `url(${editoria.coverImage})`,
+                      backgroundPosition: `${editoria.coverFocusX}% ${editoria.coverFocusY}%`,
+                      backgroundSize: `${editoria.coverScale}%`,
+                      backgroundRepeat: 'no-repeat',
+                    }}
+                    aria-hidden="true"
                   />
+                  {editoria.descriptionImage && (
+                    <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center">
+                      <img
+                        src={editoria.descriptionImage}
+                        alt={`Descrição visual da editoria ${editoria.title}`}
+                        className="max-h-[80%] max-w-[80%] object-contain drop-shadow-lg"
+                      />
+                    </div>
+                  )}
                 </a>
                 <h4 className="font-sans uppercase tracking-widest text-sm mt-4 text-gray-300">{editoria.title}</h4>
               </div>

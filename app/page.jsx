@@ -51,14 +51,20 @@ const Header = () => (
 
 const HeroSection = ({ editoria }) => {
   const coverImage = editoria?.coverImage ? resolveAssetUrl(editoria.coverImage) : HEADER_BACKGROUND;
+  const coverFocusX = editoria?.coverImageFocusX ?? 50;
+  const coverFocusY = editoria?.coverImageFocusY ?? 50;
+  const coverScale = editoria?.coverImageScale ?? 100;
+  const coverStyle = {
+    backgroundImage: `url(${coverImage})`,
+    backgroundPosition: `${coverFocusX}% ${coverFocusY}%`,
+    backgroundSize: `${coverScale}%`,
+    backgroundRepeat: 'no-repeat',
+  };
+  const descriptionImage = editoria?.descriptionImage ? resolveAssetUrl(editoria.descriptionImage) : null;
   return (
     <section className="relative w-full min-h-screen flex items-center justify-center overflow-hidden">
       <div className="absolute inset-0 z-0">
-        <img
-          src={coverImage}
-          alt="Fundo com colagem de cenas de filmes"
-          className="w-full h-full object-cover opacity-30"
-        />
+        <div className="absolute inset-0 opacity-30" style={coverStyle} />
         <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-black" />
         <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black" />
       </div>
@@ -73,9 +79,17 @@ const HeroSection = ({ editoria }) => {
           <div className="bg-black/60 border border-red-500/40 rounded-3xl p-6 space-y-3">
             <p className="text-xs uppercase tracking-[0.4em] text-red-400">Em destaque</p>
             <h1 className="text-3xl md:text-4xl font-serif">{editoria.title}</h1>
-            {editoria.description && (
+            {descriptionImage ? (
+              <div className="rounded-2xl overflow-hidden border border-red-500/30 bg-black/40">
+                <img
+                  src={descriptionImage}
+                  alt={`Descrição visual da editoria ${editoria.title}`}
+                  className="w-full h-full object-contain"
+                />
+              </div>
+            ) : (
               <p className="text-sm md:text-base text-gray-300">
-                {editoria.description}
+                A editoria está pronta para receber uma descrição visual no painel administrativo.
               </p>
             )}
             {editoria.slug && (

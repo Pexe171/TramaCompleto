@@ -11,6 +11,11 @@ const initialFormState = {
   isActive: true,
   coverImageFile: null,
   coverImageUrl: '',
+  coverImageFocusX: 50,
+  coverImageFocusY: 50,
+  coverImageScale: 100,
+  descriptionImageFile: null,
+  descriptionImageUrl: '',
 };
 
 const formatEditorias = (items) =>
@@ -23,6 +28,8 @@ export default function AdminEditoriasPage() {
   const [formState, setFormState] = useState(initialFormState);
   const [previewUrl, setPreviewUrl] = useState('');
   const [objectUrl, setObjectUrl] = useState(null);
+  const [descriptionPreviewUrl, setDescriptionPreviewUrl] = useState('');
+  const [descriptionObjectUrl, setDescriptionObjectUrl] = useState(null);
   const [feedback, setFeedback] = useState({ type: 'idle', message: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,14 +61,28 @@ export default function AdminEditoriasPage() {
     }
   }, [objectUrl]);
 
+  useEffect(
+    () => () => {
+      if (descriptionObjectUrl) {
+        URL.revokeObjectURL(descriptionObjectUrl);
+      }
+    },
+    [descriptionObjectUrl],
+  );
+
   const orderedEditorias = useMemo(() => formatEditorias(editorias), [editorias]);
 
   const resetForm = () => {
     setFormState(initialFormState);
     setPreviewUrl('');
+    setDescriptionPreviewUrl('');
     if (objectUrl) {
       URL.revokeObjectURL(objectUrl);
       setObjectUrl(null);
+    }
+    if (descriptionObjectUrl) {
+      URL.revokeObjectURL(descriptionObjectUrl);
+      setDescriptionObjectUrl(null);
     }
   };
 
@@ -95,6 +116,35 @@ export default function AdminEditoriasPage() {
     }
   };
 
+  const handleDescriptionFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (descriptionObjectUrl) {
+      URL.revokeObjectURL(descriptionObjectUrl);
+    }
+
+    const nextUrl = URL.createObjectURL(file);
+    setDescriptionObjectUrl(nextUrl);
+    setDescriptionPreviewUrl(nextUrl);
+    setFormState((prev) => ({ ...prev, descriptionImageFile: file, descriptionImageUrl: '' }));
+  };
+
+  const handleDescriptionUrlChange = (event) => {
+    const value = event.target.value;
+    setDescriptionPreviewUrl(value);
+    setFormState((prev) => ({ ...prev, descriptionImageUrl: value, descriptionImageFile: null }));
+    if (descriptionObjectUrl) {
+      URL.revokeObjectURL(descriptionObjectUrl);
+      setDescriptionObjectUrl(null);
+    }
+  };
+
+  const handleCoverControlChange = (name) => (event) => {
+    const numericValue = Number(event.target.value);
+    setFormState((prev) => ({ ...prev, [name]: Number.isFinite(numericValue) ? numericValue : prev[name] }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsSubmitting(true);
@@ -105,11 +155,20 @@ export default function AdminEditoriasPage() {
     payload.append('description', formState.description);
     payload.append('priority', formState.priority);
     payload.append('isActive', formState.isActive);
+    payload.append('coverImageFocusX', String(formState.coverImageFocusX));
+    payload.append('coverImageFocusY', String(formState.coverImageFocusY));
+    payload.append('coverImageScale', String(formState.coverImageScale));
     if (formState.coverImageFile) {
       payload.append('coverImage', formState.coverImageFile);
     }
     if (formState.coverImageUrl) {
       payload.append('coverImageUrl', formState.coverImageUrl);
+    }
+    if (formState.descriptionImageFile) {
+      payload.append('descriptionImage', formState.descriptionImageFile);
+    }
+    if (formState.descriptionImageUrl) {
+      payload.append('descriptionImageUrl', formState.descriptionImageUrl);
     }
 
     try {
@@ -125,6 +184,12 @@ export default function AdminEditoriasPage() {
   };
 
   const coverPreview = previewUrl || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png';
+  const coverPreviewStyles = {
+    backgroundImage: `url(${coverPreview})`,
+    backgroundPosition: `${formState.coverImageFocusX}% ${formState.coverImageFocusY}%`,
+    backgroundSize: `${formState.coverImageScale}%`,
+  };
+  const descriptionPreview = descriptionPreviewUrl || 'https://i.postimg.cc/WzXjG9mJ/ID-VISUAL-TRAMA-7.png';
 
   return (
     <div className="space-y-12">
@@ -175,21 +240,6 @@ export default function AdminEditoriasPage() {
               />
             </div>
 
-            <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-                Descrição
-              </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formState.description}
-                onChange={handleInputChange}
-                rows="4"
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2"
-                placeholder="Explique a linha editorial, público-alvo e tom desta secção."
-              ></textarea>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
                 <label htmlFor="priority" className="block text-sm font-medium text-gray-300 mb-2">
@@ -225,7 +275,7 @@ export default function AdminEditoriasPage() {
             <div className="space-y-4">
               <div>
                 <label htmlFor="coverImage" className="block text-sm font-medium text-gray-300 mb-2">
-                  Upload de imagem
+                  Upload da capa
                 </label>
                 <input
                   type="file"
@@ -240,7 +290,7 @@ export default function AdminEditoriasPage() {
 
               <div>
                 <label htmlFor="coverImageUrl" className="block text-sm font-medium text-gray-300 mb-2">
-                  URL hospedado (https)
+                  URL da capa (https)
                 </label>
                 <input
                   type="url"
@@ -248,7 +298,7 @@ export default function AdminEditoriasPage() {
                   name="coverImageUrl"
                   value={formState.coverImageUrl}
                   onChange={handleCoverUrlChange}
-                  placeholder="https://exemplo.com/imagem.jpg"
+                  placeholder="https://exemplo.com/capa.jpg"
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2"
                 />
                 <p className="text-xs text-gray-500 mt-1">
@@ -256,16 +306,115 @@ export default function AdminEditoriasPage() {
                 </p>
               </div>
             </div>
+
+            <div className="space-y-4">
+              <h3 className="text-sm font-semibold uppercase tracking-[0.3em] text-gray-400">Descrição por imagem</h3>
+              <p className="text-xs text-gray-500">
+                Esta imagem comunica o propósito da editoria no portal público. Escolha elementos visuais que traduzam o tom do conteúdo.
+              </p>
+              <div>
+                <label htmlFor="descriptionImage" className="block text-sm font-medium text-gray-300 mb-2">
+                  Upload da descrição visual
+                </label>
+                <input
+                  type="file"
+                  id="descriptionImage"
+                  name="descriptionImage"
+                  accept="image/*"
+                  onChange={handleDescriptionFileChange}
+                  className="w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-red-600/20 file:text-red-300 hover:file:bg-red-600/30"
+                />
+                <p className="text-xs text-gray-500 mt-1">Formatos quadrados ou verticais costumam funcionar melhor para este destaque.</p>
+              </div>
+
+              <div>
+                <label htmlFor="descriptionImageUrl" className="block text-sm font-medium text-gray-300 mb-2">
+                  URL da descrição visual (https)
+                </label>
+                <input
+                  type="url"
+                  id="descriptionImageUrl"
+                  name="descriptionImageUrl"
+                  value={formState.descriptionImageUrl}
+                  onChange={handleDescriptionUrlChange}
+                  placeholder="https://exemplo.com/descricao.jpg"
+                  className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2"
+                />
+                <p className="text-xs text-gray-500 mt-1">Prefira serviços que mantenham a imagem nítida mesmo em dispositivos móveis.</p>
+              </div>
+            </div>
           </div>
 
-          <div className="lg:col-span-2 space-y-4">
+          <div className="lg:col-span-2 space-y-6">
             <p className="text-sm text-gray-400">
-              Pré-visualização instantânea para confirmar cortes, foco e paleta. Utilize o modo escuro como referência para garantir
-              contraste adequado do texto.
+              Ajuste a composição antes de publicar. As alterações de foco e zoom são guardadas junto com a editoria e refletem no site público.
             </p>
-            <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-950/60">
-              <img src={coverPreview} alt="Pré-visualização da capa" className="w-full h-56 object-cover" />
+
+            <div className="space-y-4">
+              <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-950/60">
+                <div
+                  className="w-full h-56 bg-center bg-no-repeat transition-all duration-200"
+                  style={{ ...coverPreviewStyles, backgroundRepeat: 'no-repeat' }}
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>Posição horizontal</span>
+                    <span>{formState.coverImageFocusX}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formState.coverImageFocusX}
+                    onChange={handleCoverControlChange('coverImageFocusX')}
+                    className="w-full accent-red-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>Posição vertical</span>
+                    <span>{formState.coverImageFocusY}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={formState.coverImageFocusY}
+                    onChange={handleCoverControlChange('coverImageFocusY')}
+                    className="w-full accent-red-500"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between text-xs text-gray-400">
+                    <span>Zoom</span>
+                    <span>{formState.coverImageScale}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="80"
+                    max="200"
+                    step="1"
+                    value={formState.coverImageScale}
+                    onChange={handleCoverControlChange('coverImageScale')}
+                    className="w-full accent-red-500"
+                  />
+                </div>
+              </div>
             </div>
+
+            <div className="space-y-2">
+              <p className="text-xs uppercase tracking-[0.3em] text-gray-500">Descrição visual</p>
+              <div className="rounded-xl overflow-hidden border border-gray-800 bg-gray-950/60 flex items-center justify-center h-56">
+                <img
+                  src={descriptionPreview}
+                  alt="Pré-visualização da descrição por imagem"
+                  className="max-h-full max-w-full object-contain"
+                />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={isSubmitting}
@@ -292,15 +441,18 @@ export default function AdminEditoriasPage() {
           {isLoading
             ? [...Array(3)].map((_, index) => <div key={index} className="h-48 bg-gray-900/40 rounded-xl animate-pulse" />)
             : orderedEditorias.map((editoria) => {
-                const coverImage = resolveAssetUrl(editoria.coverImage);
+                const coverImage = resolveAssetUrl(editoria.coverImage) || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png';
+                const descriptionImage = resolveAssetUrl(editoria.descriptionImage);
+                const coverStyle = {
+                  backgroundImage: `url(${coverImage})`,
+                  backgroundPosition: `${editoria.coverImageFocusX ?? 50}% ${editoria.coverImageFocusY ?? 50}%`,
+                  backgroundSize: `${editoria.coverImageScale ?? 100}%`,
+                  backgroundRepeat: 'no-repeat',
+                };
                 return (
                   <article key={editoria._id} className="bg-gray-900/40 rounded-xl overflow-hidden border border-gray-800/60">
-                    <div className="relative h-40">
-                      <img
-                        src={coverImage || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png'}
-                        alt={`Capa da editoria ${editoria.title}`}
-                        className="w-full h-full object-cover"
-                      />
+                    <div className="relative h-40 overflow-hidden">
+                      <div className="absolute inset-0" style={coverStyle} />
                       <span
                         className={`absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full ${
                           editoria.isActive ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
@@ -309,19 +461,25 @@ export default function AdminEditoriasPage() {
                         {editoria.isActive ? 'Ativa' : 'Oculta'}
                       </span>
                     </div>
-                    <div className="p-5 space-y-3">
+                    <div className="p-5 space-y-4">
+                      <div className="flex items-center justify-between text-xs text-gray-500">
+                        <span className="uppercase tracking-widest">Prioridade {editoria.priority ?? 0}</span>
+                        <time className="uppercase tracking-widest" dateTime={editoria.updatedAt || editoria.createdAt}>
+                          {new Date(editoria.updatedAt || editoria.createdAt).toLocaleDateString('pt-BR')}
+                        </time>
+                      </div>
                       <h3 className="text-lg font-semibold text-white">{editoria.title}</h3>
-                      {editoria.description && <p className="text-sm text-gray-400 line-clamp-3">{editoria.description}</p>}
-                      <dl className="flex items-center justify-between text-xs text-gray-500">
-                        <div>
-                          <dt className="uppercase tracking-widest">Prioridade</dt>
-                          <dd className="font-semibold text-gray-300">{editoria.priority ?? 0}</dd>
+                      {descriptionImage ? (
+                        <div className="rounded-lg overflow-hidden border border-gray-800/60 bg-gray-950/40">
+                          <img
+                            src={descriptionImage}
+                            alt={`Descrição visual da editoria ${editoria.title}`}
+                            className="w-full h-32 object-contain bg-black/40"
+                          />
                         </div>
-                        <div className="text-right">
-                          <dt className="uppercase tracking-widest">Actualizada</dt>
-                          <dd>{new Date(editoria.updatedAt || editoria.createdAt).toLocaleDateString('pt-BR')}</dd>
-                        </div>
-                      </dl>
+                      ) : (
+                        <p className="text-sm text-gray-500">Sem descrição visual cadastrada.</p>
+                      )}
                     </div>
                   </article>
                 );
