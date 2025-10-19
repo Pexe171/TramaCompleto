@@ -1,4 +1,4 @@
-import { resolveAssetUrl } from '../lib/apiClient';
+import { resolveAssetUrl } from '@/lib/apiClient';
 
 const formatEditorias = (editorias) => {
   if (!Array.isArray(editorias)) {
