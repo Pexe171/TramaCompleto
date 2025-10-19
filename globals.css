@@ -2,11 +2,19 @@
 @tailwind components;
 @tailwind utilities;
 
-/* As regras de animação (@keyframes scroll e .animate-scroll) foram removidas
-  porque o carrossel agora será controlado manualmente pelo utilizador.
-*/
+@keyframes scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
 
-/* Adiciona um cursor de "agarrar" para indicar que a área é arrastável */
+.animate-scroll {
+  animation: scroll 60s linear infinite;
+}
+
 .grab-cursor {
   cursor: grab;
 }
@@ -15,13 +23,12 @@
   cursor: grabbing;
 }
 
-/* Opcional: Esconde a barra de scroll horizontal que pode aparecer em alguns navegadores */
 .no-scrollbar::-webkit-scrollbar {
-    display: none;
+  display: none;
 }
 
 .no-scrollbar {
-    -ms-overflow-style: none;  /* IE and Edge */
-    scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
