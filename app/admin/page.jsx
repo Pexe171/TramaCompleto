@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { apiClient } from '../../lib/apiClient';
+import { apiClient, resolveAssetUrl } from '../../lib/apiClient';
 
 // --- COMPONENTES DA UI ---
 
@@ -36,18 +36,50 @@ const PostRow = ({ post, onDelete }) => {
       <td className="py-4 px-6 font-medium">{post.title}</td>
       <td className="py-4 px-6 text-gray-400">{post.editoriaId?.title || 'Sem Categoria'}</td>
       <td className="py-4 px-6">
-        <span className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${
-          post.status === 'publicado' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
-        }`}>
+        <span
+          className={`px-3 py-1 text-xs font-semibold rounded-full capitalize ${
+            post.status === 'publicado' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'
+          }`}
+        >
           {post.status}
         </span>
       </td>
       <td className="py-4 px-6 text-gray-400">{formattedDate}</td>
       <td className="py-4 px-6 text-right">
-        <a href={`/admin/posts/${post._id}`} className="text-blue-400 hover:text-blue-300 mr-4 font-semibold">Editar</a>
-        <button onClick={() => onDelete(post._id, post.title)} className="text-red-500 hover:text-red-400 font-semibold">Excluir</button>
+        <a href={`/admin/posts/${post._id}`} className="text-blue-400 hover:text-blue-300 mr-4 font-semibold">
+          Editar
+        </a>
+        <button onClick={() => onDelete(post._id, post.title)} className="text-red-500 hover:text-red-400 font-semibold">
+          Excluir
+        </button>
       </td>
     </tr>
+  );
+};
+
+const EditoriaCard = ({ editoria }) => {
+  const coverImage = resolveAssetUrl(editoria.coverImage) || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png';
+  return (
+    <article className="bg-gray-900/40 rounded-xl overflow-hidden border border-gray-800/60">
+      <div className="relative h-36 w-full overflow-hidden">
+        <img src={coverImage} alt={`Capa da editoria ${editoria.title}`} className="h-full w-full object-cover" />
+        <span
+          className={`absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full ${
+            editoria.isActive ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
+          }`}
+        >
+          {editoria.isActive ? 'Ativa' : 'Oculta'}
+        </span>
+      </div>
+      <div className="p-5 space-y-2">
+        <h3 className="text-lg font-semibold text-white">{editoria.title}</h3>
+        {editoria.description && <p className="text-sm text-gray-400 line-clamp-3">{editoria.description}</p>}
+        <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+          <span>Prioridade {editoria.priority ?? 0}</span>
+          <time dateTime={editoria.createdAt}>{new Date(editoria.createdAt).toLocaleDateString('pt-BR')}</time>
+        </div>
+      </div>
+    </article>
   );
 };
 
@@ -59,19 +91,23 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
         <h2 className="text-xl font-bold mb-4">{title}</h2>
         <p className="text-gray-300 mb-6">{message}</p>
         <div className="flex justify-end space-x-4">
-          <button onClick={onClose} className="px-4 py-2 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors">Cancelar</button>
-          <button onClick={onConfirm} className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 transition-colors font-semibold">Confirmar Exclusão</button>
+          <button onClick={onClose} className="px-4 py-2 rounded-md bg-gray-700 hover:bg-gray-600 transition-colors">
+            Cancelar
+          </button>
+          <button onClick={onConfirm} className="px-4 py-2 rounded-md bg-red-600 hover:bg-red-700 transition-colors font-semibold">
+            Confirmar Exclusão
+          </button>
         </div>
       </div>
     </div>
   );
 };
 
-
 // --- COMPONENTE PRINCIPAL DA PÁGINA ---
 
 export default function AdminPage() {
   const [posts, setPosts] = useState([]);
+  const [editorias, setEditorias] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modalState, setModalState] = useState({ isOpen: false, postId: null, postTitle: '' });
@@ -79,12 +115,16 @@ export default function AdminPage() {
   useEffect(() => {
     const controller = new AbortController();
 
-    const fetchPosts = async () => {
+    const fetchDashboardData = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const articles = await apiClient.get('/admin/articles', { signal: controller.signal });
+        const [articles, editoriasData] = await Promise.all([
+          apiClient.get('/admin/articles', { signal: controller.signal }),
+          apiClient.get('/admin/editorias', { signal: controller.signal }),
+        ]);
         setPosts(articles || []);
+        setEditorias(editoriasData || []);
       } catch (err) {
         if (err.name === 'AbortError') {
           return;
@@ -95,7 +135,7 @@ export default function AdminPage() {
       }
     };
 
-    fetchPosts();
+    fetchDashboardData();
 
     return () => controller.abort();
   }, []);
@@ -112,21 +152,25 @@ export default function AdminPage() {
     if (!modalState.postId) return;
     try {
       await apiClient.delete(`/admin/articles/${modalState.postId}`);
-      setPosts(prevPosts => prevPosts.filter(post => post._id !== modalState.postId));
+      setPosts((prevPosts) => prevPosts.filter((post) => post._id !== modalState.postId));
     } catch (err) {
       setError(err.message);
     } finally {
       closeDeleteModal();
     }
   };
-  
-  const stats = useMemo(() => ({
-    posts: posts.length,
-    views: posts.reduce((sum, post) => sum + (post.stats?.views || 0), 0),
-    comments: posts.reduce((sum, post) => sum + (post.stats?.commentsCount || 0), 0),
-  }), [posts]);
 
-  if (error && !posts.length) {
+  const stats = useMemo(
+    () => ({
+      posts: posts.length,
+      editorias: editorias.length,
+      views: posts.reduce((sum, post) => sum + (post.stats?.views || 0), 0),
+      comments: posts.reduce((sum, post) => sum + (post.stats?.commentsCount || 0), 0),
+    }),
+    [posts, editorias]
+  );
+
+  if (error && !posts.length && !editorias.length) {
     return (
       <div className="text-center text-red-400 bg-red-500/10 p-8 rounded-lg">
         <h2 className="text-2xl font-bold mb-2">Não foi possível carregar o painel</h2>
@@ -145,22 +189,67 @@ export default function AdminPage() {
         title="Confirmar Exclusão"
         message={`Tem a certeza que deseja excluir permanentemente o artigo "${modalState.postTitle}"? Esta ação não pode ser desfeita.`}
       />
-      <header className="mb-12 flex justify-between items-center">
+      <header className="mb-12 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-4xl font-serif font-bold">Bem-vinda, Helena!</h1>
-          <p className="text-gray-400 mt-1">Aqui está um resumo da sua atividade.</p>
+          <p className="text-gray-400 mt-1 max-w-xl">
+            Organize editorias, publique conteúdos e acompanhe o desempenho das histórias criadas pela equipa.
+          </p>
         </div>
-        <a href="/admin/posts/new" className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center space-x-2">
-           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path></svg>
-           <span>Criar Novo Post</span>
-        </a>
+        <div className="flex flex-col sm:flex-row gap-3">
+          <a
+            href="/admin/editorias"
+            className="bg-gray-800 hover:bg-gray-700 text-white font-semibold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16m-7 6h7"></path>
+            </svg>
+            <span>Gerir editorias</span>
+          </a>
+          <a
+            href="/admin/posts/new"
+            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+            </svg>
+            <span>Criar novo post</span>
+          </a>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
         <StatCard title="Total de Posts" value={stats.posts} icon="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" isLoading={isLoading} />
+        <StatCard title="Editorias" value={stats.editorias} icon="M3 7h18M3 12h18M3 17h18" isLoading={isLoading} />
         <StatCard title="Visualizações Totais" value={stats.views} icon="M15 12a3 3 0 11-6 0 3 3 0 016 0zM21 12c-1.5 4.5-6 7.5-9 7.5s-7.5-3-9-7.5 3-7.5 9-7.5 7.5 3 9 7.5z" isLoading={isLoading} />
         <StatCard title="Comentários" value={stats.comments} icon="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" isLoading={isLoading} />
       </div>
+
+      <section className="mb-12">
+        <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-6">
+          <div>
+            <h2 className="text-2xl font-serif font-bold">Editorias em destaque</h2>
+            <p className="text-gray-400 text-sm max-w-2xl">
+              Agrupe conteúdos em editorias e mantenha a identidade visual alinhada com a nossa paleta. Para criar uma nova editoria,
+              utilize o botão acima e visualize aqui os resultados.
+            </p>
+          </div>
+          <a href="/admin/editorias" className="self-start md:self-center text-sm font-semibold text-red-400 hover:text-red-300">
+            Ver todas as editorias
+          </a>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+          {isLoading
+            ? [...Array(3)].map((_, index) => <div key={index} className="bg-gray-900/40 rounded-xl h-48 animate-pulse" />)
+            : editorias.slice(0, 6).map((editoria) => <EditoriaCard key={editoria._id} editoria={editoria} />)}
+          {!isLoading && editorias.length === 0 && (
+            <div className="col-span-full bg-gray-900/40 border border-dashed border-gray-700 rounded-xl p-8 text-center text-gray-400">
+              Ainda não existem editorias registadas. Clique em "Gerir editorias" para criar a primeira.
+            </div>
+          )}
+        </div>
+      </section>
 
       <div>
         <h2 className="text-2xl font-serif font-bold mb-6">Posts Recentes</h2>
@@ -179,15 +268,29 @@ export default function AdminPage() {
               {isLoading ? (
                 [...Array(4)].map((_, i) => (
                   <tr key={i} className="border-b border-gray-800 animate-pulse">
-                    <td className="py-4 px-6"><div className="h-4 bg-gray-700 rounded w-full"></div></td>
-                    <td className="py-4 px-6"><div className="h-4 bg-gray-700 rounded w-3/4"></div></td>
-                    <td className="py-4 px-6"><div className="h-4 bg-gray-700 rounded w-1/2"></div></td>
-                    <td className="py-4 px-6"><div className="h-4 bg-gray-700 rounded w-1/2"></div></td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-gray-700 rounded w-full"></div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-gray-700 rounded w-3/4"></div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="h-4 bg-gray-700 rounded w-1/2"></div>
+                    </td>
                     <td className="py-4 px-6"></td>
                   </tr>
                 ))
+              ) : posts.length > 0 ? (
+                posts.slice(0, 4).map((post) => <PostRow key={post._id} post={post} onDelete={openDeleteModal} />)
               ) : (
-                posts.slice(0, 4).map(post => <PostRow key={post._id} post={post} onDelete={openDeleteModal} />)
+                <tr>
+                  <td colSpan="5" className="py-10 text-center text-gray-400">
+                    Ainda não existem posts publicados. Utilize o botão "Criar novo post" para começar.
+                  </td>
+                </tr>
               )}
             </tbody>
           </table>
@@ -196,4 +299,3 @@ export default function AdminPage() {
     </div>
   );
 }
-

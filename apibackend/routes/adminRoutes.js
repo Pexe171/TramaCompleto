@@ -29,6 +29,19 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+const isValidHttpUrl = (value) => {
+    if (!value || typeof value !== 'string') {
+        return false;
+    }
+
+    try {
+        const url = new URL(value.trim());
+        return url.protocol === 'http:' || url.protocol === 'https:';
+    } catch (_error) {
+        return false;
+    }
+};
+
 const parseTags = (tags) => {
     if (!tags) return undefined;
     if (Array.isArray(tags)) return tags.filter(Boolean).map((tag) => tag.trim()).filter(Boolean);
@@ -36,6 +49,18 @@ const parseTags = (tags) => {
         .split(',')
         .map((tag) => tag.trim())
         .filter(Boolean);
+};
+
+const resolveCoverImageValue = (req) => {
+    if (req.file) {
+        return path.posix.join('uploads', req.file.filename);
+    }
+
+    if (isValidHttpUrl(req.body?.coverImageUrl)) {
+        return req.body.coverImageUrl.trim();
+    }
+
+    return undefined;
 };
 
 // --- ROTAS DE GESTÃO DE ARTIGOS ---
@@ -97,8 +122,9 @@ router.post(
             publishedAt: status === 'publicado' ? new Date() : null,
         };
 
-        if (req.file) {
-            articleData.coverImage = path.posix.join('uploads', req.file.filename);
+        const coverImageValue = resolveCoverImageValue(req);
+        if (coverImageValue) {
+            articleData.coverImage = coverImageValue;
         }
 
         const parsedTags = parseTags(tags);
@@ -186,8 +212,9 @@ router.put(
             article.tags = parsedTags;
         }
 
-        if (req.file) {
-            article.coverImage = path.posix.join('uploads', req.file.filename);
+        const coverImageValue = resolveCoverImageValue(req);
+        if (coverImageValue) {
+            article.coverImage = coverImageValue;
         }
 
         const updatedArticle = await article.save();
@@ -248,8 +275,9 @@ router.post(
             isActive: isActive === 'true' || isActive === true,
         };
 
-        if (req.file) {
-            editoriaData.coverImage = path.posix.join('uploads', req.file.filename);
+        const coverImageValue = resolveCoverImageValue(req);
+        if (coverImageValue) {
+            editoriaData.coverImage = coverImageValue;
         }
 
         const createdEditoria = await Editoria.create(editoriaData);
@@ -294,8 +322,9 @@ router.put(
             editoria.isActive = isActive === 'true' || isActive === true;
         }
 
-        if (req.file) {
-            editoria.coverImage = path.posix.join('uploads', req.file.filename);
+        const coverImageValue = resolveCoverImageValue(req);
+        if (coverImageValue) {
+            editoria.coverImage = coverImageValue;
         }
 
         const updatedEditoria = await editoria.save();

@@ -14,7 +14,8 @@ const Icon = ({ path }) => (
 
 const navLinks = [
   { href: '/admin', label: 'Dashboard', icon: 'M4 6h16M4 12h16M4 18h16' },
-  { href: '/admin/posts/new', label: 'Criar Novo', icon: 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z' },
+  { href: '/admin/editorias', label: 'Editorias', icon: 'M3 7h18M3 12h18M3 17h18' },
+  { href: '/admin/posts/new', label: 'Novo Post', icon: 'M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z' },
 ];
 
 export default function AdminLayout({ children }) {
@@ -28,7 +29,7 @@ export default function AdminLayout({ children }) {
 
     if (!hasToken) {
       setAuthError('Sessão expirada. Faça login novamente.');
-      router.replace('/acesso');
+      router.replace('/admin/login');
       return;
     }
 
@@ -43,7 +44,7 @@ export default function AdminLayout({ children }) {
       // vamos limpar o token local para evitar inconsistências.
     } finally {
       clearStoredToken();
-      router.push('/acesso');
+      router.push('/admin/login');
     }
   }, [router]);
 
@@ -62,7 +63,7 @@ export default function AdminLayout({ children }) {
           <p className="text-red-400 font-semibold">{authError}</p>
           <button
             type="button"
-            onClick={() => router.replace('/acesso')}
+            onClick={() => router.replace('/admin/login')}
             className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 transition-colors"
           >
             Ir para a página de acesso
