@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
-import { apiClient, clearStoredToken } from '../../lib/apiClient';
+import { apiClient, clearStoredToken } from '@/lib/apiClient';
 
 const Icon = ({ path }) => (
   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { apiClient, resolveAssetUrl } from '../../lib/apiClient';
+import { apiClient, resolveAssetUrl } from '@/lib/apiClient';
 
 // --- COMPONENTES DA UI ---
 
