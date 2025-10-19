@@ -229,6 +229,23 @@ export default function PostFormPage() {
                 className="w-full bg-gray-800 border-gray-700 rounded-md p-3 font-mono text-sm"
                 required
               ></textarea>
+              <div className="mt-2 space-y-2 text-xs text-gray-500">
+                <p>
+                  Para incorporar um vídeo do YouTube, deixe uma linha em branco antes e outra depois do link. O editor vai
+                  criar o player automaticamente na leitura.
+                </p>
+                <pre className="whitespace-pre-wrap rounded-md bg-gray-900/60 px-3 py-2 font-mono text-[11px] text-gray-300">
+{`Texto anterior
+
+https://youtu.be/ID_DO_VIDEO
+
+Texto seguinte`}
+                </pre>
+                <p>
+                  Para destacar palavras, utilize o formato <code>{'{{cor|texto}}'}</code>, por exemplo
+                  {' '}<code>{'{{vermelho|urgente}}'}</code> ou <code>{'{{#FFD700|destaque}}'}</code>.
+                </p>
+              </div>
             </div>
           </div>
         </div>
