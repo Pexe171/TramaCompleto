@@ -32,7 +32,8 @@ export default function AcessoPage() {
         storeAuthToken(data.token);
       }
 
-      setFeedback({ type: 'success', message: 'Login realizado com sucesso! A redirecionar...' });
+      const successMessage = data?.message || 'Login realizado com sucesso! A redirecionar...';
+      setFeedback({ type: 'success', message: successMessage });
 
       if (data?.role === 'admin' || data?.role === 'editor') {
         router.push('/admin');

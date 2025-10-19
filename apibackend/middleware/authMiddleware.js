@@ -1,10 +1,11 @@
 // Middleware de autenticação e autorização
-const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const { verifyAuthToken } = require('../utils/tokenManager');
 
 const extractTokenFromHeaders = (req) => {
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer ')) {
-        const [, token] = req.headers.authorization.split(' ');
+    const { authorization } = req.headers || {};
+    if (authorization && authorization.startsWith('Bearer ')) {
+        const [, token] = authorization.split(' ');
         return token;
     }
     return null;
@@ -21,12 +22,12 @@ const getToken = (req) => {
     return null;
 };
 
-const decodeToken = async (token) => {
+const resolveAuthenticatedUser = async (token) => {
     if (!token) {
         return null;
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = verifyAuthToken(token);
     const user = await User.findById(decoded.id).select('-passwordHash');
 
     if (!user) {
@@ -45,7 +46,7 @@ const protect = async (req, res, next) => {
             return res.status(401).json({ message: 'Não autorizado, token ausente.' });
         }
 
-        const user = await decodeToken(token);
+        const user = await resolveAuthenticatedUser(token);
         req.user = user;
         next();
     } catch (error) {
@@ -62,7 +63,7 @@ const optionalAuth = async (req, res, next) => {
             return next();
         }
 
-        const user = await decodeToken(token);
+        const user = await resolveAuthenticatedUser(token);
         req.user = user;
         next();
     } catch (error) {

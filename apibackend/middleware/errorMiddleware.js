@@ -1,12 +1,16 @@
 // Middleware de tratamento de erros padrão
+const { HttpError } = require('../utils/httpError');
+
 const notFound = (req, res, next) => {
-    const error = new Error(`Rota não encontrada - ${req.originalUrl}`);
-    error.statusCode = 404;
+    const error = new HttpError(404, `Rota não encontrada - ${req.originalUrl}`);
     next(error);
 };
 
-const errorHandler = (err, req, res, next) => {
-    const statusCode = err.statusCode || err.status || (res.statusCode !== 200 ? res.statusCode : 500);
+const errorHandler = (err, req, res, _next) => {
+    const statusCode = err instanceof HttpError
+        ? err.statusCode
+        : err.statusCode || err.status || (res.statusCode && res.statusCode !== 200 ? res.statusCode : 500);
+
     res.status(statusCode);
 
     const response = {
@@ -15,6 +19,9 @@ const errorHandler = (err, req, res, next) => {
 
     if (process.env.NODE_ENV === 'development') {
         response.stack = err.stack;
+        if (err.cause) {
+            response.cause = err.cause;
+        }
     }
 
     res.json(response);
