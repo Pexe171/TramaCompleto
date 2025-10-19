@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 
-import { apiClient, storeAuthToken } from '../../../lib/apiClient';
+import { apiClient, storeAuthToken } from '../../../../lib/apiClient';
 
 const initialState = { email: '', password: '' };
 
