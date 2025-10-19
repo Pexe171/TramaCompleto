@@ -10,13 +10,25 @@ const LOGO_URL = 'https://i.postimg.cc/0yhff9rh/Layout-trama-png-1.png';
 
 const fetchFromApi = async (endpoint, options = {}) => {
   try {
-    const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-      next: { revalidate: options.revalidate ?? 60 },
-      cache: 'no-store',
-    });
+    const fetchOptions = {};
+
+    if (options.cache === 'no-store') {
+      fetchOptions.cache = 'no-store';
+    } else {
+      fetchOptions.next = { revalidate: options.revalidate ?? 60 };
+    }
+
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, fetchOptions);
 
     if (!response.ok) {
+      if (response.status === 404) {
+        return null;
+      }
       throw new Error(`Falha ao carregar ${endpoint}`);
+    }
+
+    if (response.status === 204) {
+      return null;
     }
 
     return response.json();
