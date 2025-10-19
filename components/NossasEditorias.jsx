@@ -1,33 +1,36 @@
 import { resolveAssetUrl } from '../lib/apiClient';
 
-const fallbackEditorias = [
-  { titulo: 'Cine Movimento', imagem: 'https://i.postimg.cc/L86v3b0g/CINE-MOVIMENTO.jpg', slug: '#' },
-  { titulo: 'De Volta Para o Futuro', imagem: 'https://i.postimg.cc/Bv5Wk0H1/DE-VOLTA-PRO-FUTURO.jpg', slug: '#' },
-  { titulo: 'Vale o Ingresso?', imagem: 'https://i.postimg.cc/W3h09V13/VALE-O-INGRESSO.jpg', slug: '#' },
-  { titulo: 'Furo de Roteiro', imagem: 'https://i.postimg.cc/J4sPjJ94/FURO-DE-ROTEIRO.jpg', slug: '#' },
-  { titulo: 'Personas em Cena', imagem: 'https://i.postimg.cc/d11v9s8z/PERSONAS-EM-CENA.jpg', slug: '#' },
-  { titulo: 'Clube da Notícia', imagem: 'https://i.postimg.cc/L58k5Jk9/CLUBE-DA-NOTICIA.jpg', slug: '#' },
-  { titulo: 'Por Trás do Cartaz', imagem: 'https://i.postimg.cc/1X6Gv6vS/POR-TRAS-DO-CARTAZ.jpg', slug: '#' },
-];
-
 const formatEditorias = (editorias) => {
-  if (!Array.isArray(editorias) || !editorias.length) {
-    return fallbackEditorias.map((item) => ({
-      title: item.titulo,
-      coverImage: item.imagem,
-      href: item.slug,
-    }));
+  if (!Array.isArray(editorias)) {
+    return [];
   }
 
-  return editorias.map((editoria) => ({
-    title: editoria.title,
-    coverImage: resolveAssetUrl(editoria.coverImage) || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png',
-    href: editoria.slug ? `/editorias/${editoria.slug}` : '#',
-  }));
+  return editorias
+    .filter((editoria) => Boolean(editoria))
+    .map((editoria) => ({
+      title: editoria.title,
+      coverImage: resolveAssetUrl(editoria.coverImage) || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png',
+      href: editoria.slug ? `/editorias/${editoria.slug}` : '#',
+    }));
 };
 
 export default function NossasEditorias({ editorias }) {
   const items = formatEditorias(editorias);
+
+  if (!items.length) {
+    return (
+      <section id="editorias" className="py-20 md:py-32 bg-black text-white">
+        <div className="container mx-auto px-4 text-center space-y-6">
+          <h2 className="text-5xl md:text-6xl font-serif">
+            <span className="font-script text-red-500 text-7xl">Nossas</span> Editorias
+          </h2>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Assim que as primeiras editorias forem publicadas pelo sistema de gestão, elas aparecerão por aqui.
+          </p>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section id="editorias" className="py-20 md:py-32 bg-black text-white">
