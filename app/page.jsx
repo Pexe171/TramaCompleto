@@ -3,7 +3,7 @@ import Link from 'next/link';
 import NossasEditorias from '../components/NossasEditorias';
 import QuemSomos from '../components/QuemSomos';
 import UltimasPostagens from '../components/UltimasPostagens';
-import { API_BASE_URL, resolveAssetUrl } from '../lib/apiClient';
+import { API_BASE_URL, resolveAssetUrl } from '@/lib/apiClient';
 
 const HEADER_BACKGROUND = 'https://i.postimg.cc/0QRV89sD/IMG-1758-1.jpg';
 const LOGO_URL = 'https://i.postimg.cc/0yhff9rh/Layout-trama-png-1.png';
