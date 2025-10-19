@@ -21,10 +21,17 @@ const navLinks = [
 export default function AdminLayout({ children }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isLoginRoute = pathname === '/admin/login';
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
 
   useEffect(() => {
+    if (isLoginRoute) {
+      setIsCheckingAuth(false);
+      setAuthError(null);
+      return;
+    }
+
     const hasToken = typeof window !== 'undefined' ? window.localStorage.getItem('authToken') : null;
 
     if (!hasToken) {
@@ -34,7 +41,7 @@ export default function AdminLayout({ children }) {
     }
 
     setIsCheckingAuth(false);
-  }, [router]);
+  }, [isLoginRoute, router]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -47,6 +54,10 @@ export default function AdminLayout({ children }) {
       router.push('/admin/login');
     }
   }, [router]);
+
+  if (isLoginRoute) {
+    return <>{children}</>;
+  }
 
   if (isCheckingAuth) {
     return (
