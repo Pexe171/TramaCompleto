@@ -1,38 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
-// --- Lógica do Cliente de API (integrada para compatibilidade) ---
-const API_URL = 'http://localhost:5000/api';
-async function fetcher(endpoint, options = {}) {
-  const url = `${API_URL}${endpoint}`;
-  const token = typeof window !== 'undefined' ? localStorage.getItem('authToken') : null;
-  const defaultOptions = {
-    headers: {
-      ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
-      ...(token && { 'Authorization': `Bearer ${token}` }),
-    },
-    ...options,
-  };
-  try {
-    const response = await fetch(url, defaultOptions);
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Ocorreu um erro na API.');
-    }
-    return response.status !== 204 ? await response.json() : null; // Handle no content response
-  } catch (error) {
-    console.error('Erro na API:', error);
-    throw error;
-  }
-}
-
-const apiClient = {
-  get: (endpoint) => fetcher(endpoint),
-  post: (endpoint, body) => fetcher(endpoint, { method: 'POST', body: body instanceof FormData ? body : JSON.stringify(body) }),
-  put: (endpoint, body) => fetcher(endpoint, { method: 'PUT', body: body instanceof FormData ? body : JSON.stringify(body) }),
-  delete: (endpoint) => fetcher(endpoint, { method: 'DELETE' }),
-};
+import { apiClient } from '../../lib/apiClient';
 
 // --- COMPONENTES DA UI ---
 
@@ -107,22 +77,27 @@ export default function AdminPage() {
   const [modalState, setModalState] = useState({ isOpen: false, postId: null, postTitle: '' });
 
   useEffect(() => {
+    const controller = new AbortController();
+
     const fetchPosts = async () => {
       setIsLoading(true);
       setError(null);
       try {
-        const articles = await apiClient.get('/admin/articles');
-        setPosts(articles);
+        const articles = await apiClient.get('/admin/articles', { signal: controller.signal });
+        setPosts(articles || []);
       } catch (err) {
-         // Se o erro for de autenticação, o layout já deve ter redirecionado
+        if (err.name === 'AbortError') {
+          return;
+        }
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
 
-    // A verificação de autenticação agora está no layout, então apenas chamamos os dados
     fetchPosts();
+
+    return () => controller.abort();
   }, []);
 
   const openDeleteModal = (postId, postTitle) => {
@@ -145,11 +120,11 @@ export default function AdminPage() {
     }
   };
   
-  const stats = {
-      posts: posts.length,
-      views: posts.reduce((sum, post) => sum + (post.stats?.views || 0), 0),
-      comments: posts.reduce((sum, post) => sum + (post.stats?.commentsCount || 0), 0)
-  };
+  const stats = useMemo(() => ({
+    posts: posts.length,
+    views: posts.reduce((sum, post) => sum + (post.stats?.views || 0), 0),
+    comments: posts.reduce((sum, post) => sum + (post.stats?.commentsCount || 0), 0),
+  }), [posts]);
 
   if (error && !posts.length) {
     return (
