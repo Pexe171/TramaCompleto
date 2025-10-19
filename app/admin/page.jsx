@@ -59,10 +59,17 @@ const PostRow = ({ post, onDelete }) => {
 
 const EditoriaCard = ({ editoria }) => {
   const coverImage = resolveAssetUrl(editoria.coverImage) || 'https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png';
+  const descriptionImage = resolveAssetUrl(editoria.descriptionImage);
+  const coverStyle = {
+    backgroundImage: `url(${coverImage})`,
+    backgroundPosition: `${editoria.coverImageFocusX ?? 50}% ${editoria.coverImageFocusY ?? 50}%`,
+    backgroundSize: `${editoria.coverImageScale ?? 100}%`,
+    backgroundRepeat: 'no-repeat',
+  };
   return (
     <article className="bg-gray-900/40 rounded-xl overflow-hidden border border-gray-800/60">
       <div className="relative h-36 w-full overflow-hidden">
-        <img src={coverImage} alt={`Capa da editoria ${editoria.title}`} className="h-full w-full object-cover" />
+        <div className="absolute inset-0" style={coverStyle} />
         <span
           className={`absolute top-3 right-3 px-3 py-1 text-xs font-semibold rounded-full ${
             editoria.isActive ? 'bg-green-500/20 text-green-300' : 'bg-gray-500/20 text-gray-300'
@@ -71,13 +78,23 @@ const EditoriaCard = ({ editoria }) => {
           {editoria.isActive ? 'Ativa' : 'Oculta'}
         </span>
       </div>
-      <div className="p-5 space-y-2">
-        <h3 className="text-lg font-semibold text-white">{editoria.title}</h3>
-        {editoria.description && <p className="text-sm text-gray-400 line-clamp-3">{editoria.description}</p>}
-        <div className="flex items-center justify-between text-xs text-gray-500 pt-1">
+      <div className="p-5 space-y-3">
+        <div className="flex items-center justify-between text-xs text-gray-500">
           <span>Prioridade {editoria.priority ?? 0}</span>
           <time dateTime={editoria.createdAt}>{new Date(editoria.createdAt).toLocaleDateString('pt-BR')}</time>
         </div>
+        <h3 className="text-lg font-semibold text-white">{editoria.title}</h3>
+        {descriptionImage ? (
+          <div className="rounded-lg overflow-hidden border border-gray-800/60 bg-gray-950/40">
+            <img
+              src={descriptionImage}
+              alt={`Descrição visual da editoria ${editoria.title}`}
+              className="w-full h-28 object-contain bg-black/40"
+            />
+          </div>
+        ) : (
+          <p className="text-sm text-gray-500">Sem descrição visual cadastrada.</p>
+        )}
       </div>
     </article>
   );

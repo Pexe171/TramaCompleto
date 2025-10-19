@@ -51,9 +51,32 @@ const parseTags = (tags) => {
         .filter(Boolean);
 };
 
+const resolveUploadedPath = (file) => {
+    if (!file) {
+        return undefined;
+    }
+
+    return path.posix.join('uploads', file.filename);
+};
+
+const resolveImageValue = (req, fieldName) => {
+    const fileFromFieldArray = req.files?.[fieldName]?.[0];
+    const uploaded = resolveUploadedPath(fileFromFieldArray);
+    if (uploaded) {
+        return uploaded;
+    }
+
+    const remoteUrl = req.body?.[`${fieldName}Url`];
+    if (isValidHttpUrl(remoteUrl)) {
+        return remoteUrl.trim();
+    }
+
+    return undefined;
+};
+
 const resolveCoverImageValue = (req) => {
     if (req.file) {
-        return path.posix.join('uploads', req.file.filename);
+        return resolveUploadedPath(req.file);
     }
 
     if (isValidHttpUrl(req.body?.coverImageUrl)) {
@@ -62,6 +85,31 @@ const resolveCoverImageValue = (req) => {
 
     return undefined;
 };
+
+const clampNumber = (value, { min, max, fallback }) => {
+    if (value === undefined || value === null || value === '') {
+        return fallback;
+    }
+
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) {
+        return fallback;
+    }
+
+    const clamped = Math.min(Math.max(numericValue, min), max);
+    return clamped;
+};
+
+const parseCoverControls = (body = {}) => ({
+    focusX: clampNumber(body.coverImageFocusX, { min: 0, max: 100, fallback: 50 }),
+    focusY: clampNumber(body.coverImageFocusY, { min: 0, max: 100, fallback: 50 }),
+    scale: clampNumber(body.coverImageScale, { min: 80, max: 300, fallback: 100 }),
+});
+
+const uploadEditoriaAssets = upload.fields([
+    { name: 'coverImage', maxCount: 1 },
+    { name: 'descriptionImage', maxCount: 1 },
+]);
 
 // --- ROTAS DE GESTÃO DE ARTIGOS ---
 router.get(
@@ -251,7 +299,7 @@ router.post(
     '/editorias',
     protect,
     admin,
-    upload.single('coverImage'),
+    uploadEditoriaAssets,
     asyncHandler(async (req, res) => {
         const { title, description, priority, isActive } = req.body;
 
@@ -267,17 +315,27 @@ router.post(
             throw new Error('Já existe uma editoria com este título.');
         }
 
+        const coverControls = parseCoverControls(req.body);
+
         const editoriaData = {
             title: title.trim(),
             description: description ? description.trim() : undefined,
             slug,
             priority: priority !== undefined ? Number(priority) : 0,
             isActive: isActive === 'true' || isActive === true,
+            coverImageFocusX: coverControls.focusX,
+            coverImageFocusY: coverControls.focusY,
+            coverImageScale: coverControls.scale,
         };
 
-        const coverImageValue = resolveCoverImageValue(req);
+        const coverImageValue = resolveImageValue(req, 'coverImage');
         if (coverImageValue) {
             editoriaData.coverImage = coverImageValue;
+        }
+
+        const descriptionImageValue = resolveImageValue(req, 'descriptionImage');
+        if (descriptionImageValue) {
+            editoriaData.descriptionImage = descriptionImageValue;
         }
 
         const createdEditoria = await Editoria.create(editoriaData);
@@ -289,7 +347,7 @@ router.put(
     '/editorias/:id',
     protect,
     admin,
-    upload.single('coverImage'),
+    uploadEditoriaAssets,
     asyncHandler(async (req, res) => {
         const { title, description, priority, isActive } = req.body;
         const editoria = await Editoria.findById(req.params.id);
@@ -322,9 +380,25 @@ router.put(
             editoria.isActive = isActive === 'true' || isActive === true;
         }
 
-        const coverImageValue = resolveCoverImageValue(req);
+        const coverImageValue = resolveImageValue(req, 'coverImage');
         if (coverImageValue) {
             editoria.coverImage = coverImageValue;
+        }
+
+        const descriptionImageValue = resolveImageValue(req, 'descriptionImage');
+        if (descriptionImageValue) {
+            editoria.descriptionImage = descriptionImageValue;
+        }
+
+        const coverControls = parseCoverControls(req.body);
+        if (req.body?.coverImageFocusX !== undefined) {
+            editoria.coverImageFocusX = coverControls.focusX;
+        }
+        if (req.body?.coverImageFocusY !== undefined) {
+            editoria.coverImageFocusY = coverControls.focusY;
+        }
+        if (req.body?.coverImageScale !== undefined) {
+            editoria.coverImageScale = coverControls.scale;
         }
 
         const updatedEditoria = await editoria.save();
