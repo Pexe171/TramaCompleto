@@ -151,8 +151,8 @@ const renderParagraphBlock = (block, index) => {
   );
 };
 
-const renderVideoBlock = (videoId, index) => (
-  <div key={`video-${index}`} className="my-10">
+const renderVideoBlock = (videoId, key) => (
+  <div key={`video-${key}`} className="my-10">
     <div className="relative w-full overflow-hidden rounded-3xl border border-red-500/40 bg-black shadow-lg shadow-red-900/30 pt-[56.25%]">
       <iframe
         src={`https://www.youtube.com/embed/${videoId}`}
@@ -170,43 +170,63 @@ const extractYoutubeData = (rawBlock) => {
     return null;
   }
 
-  const block = rawBlock.trim();
+  const createVideoData = (match, urlMatch) => {
+    if (!match || !urlMatch) {
+      return null;
+    }
+
+    const start = match.index ?? 0;
+    const end = start + match[0].length;
+    const before = rawBlock.slice(0, start).trim();
+    const after = rawBlock.slice(end).trim();
+
+    return {
+      videoId: urlMatch[1],
+      before,
+      after,
+    };
+  };
 
   // 1) iframe embed pasted from another blog/editor
-  const iframeMatch = block.match(/<iframe[\s\S]*?src=["']([^"']+)["'][\s\S]*?<\/iframe>/i);
+  const iframeRegex = /<iframe[\s\S]*?src=["']([^"']+)["'][\s\S]*?<\/iframe>/i;
+  const iframeMatch = rawBlock.match(iframeRegex);
   if (iframeMatch) {
     const urlMatch = iframeMatch[1].match(YOUTUBE_URL_REGEX);
-    if (urlMatch) {
-      const cleaned = block.replace(iframeMatch[0], '').trim();
-      return { videoId: urlMatch[1], remainder: cleaned };
+    const videoData = createVideoData(iframeMatch, urlMatch);
+    if (videoData) {
+      return videoData;
     }
   }
 
   // 2) Markdown style link: [texto](https://youtu.be/...)
-  const markdownMatch = block.match(/\[[^\]]*\]\((https?:\/\/[^)]+)\)/i);
+  const markdownRegex = /\[[^\]]*\]\((https?:\/\/[^)]+)\)/i;
+  const markdownMatch = rawBlock.match(markdownRegex);
   if (markdownMatch) {
     const urlMatch = markdownMatch[1].match(YOUTUBE_URL_REGEX);
-    if (urlMatch) {
-      const cleaned = block.replace(markdownMatch[0], '').trim();
-      return { videoId: urlMatch[1], remainder: cleaned };
+    const videoData = createVideoData(markdownMatch, urlMatch);
+    if (videoData) {
+      return videoData;
     }
   }
 
   // 3) Link copiado como <a href="https://youtu.be/...">texto</a>
-  const anchorMatch = block.match(/<a[\s\S]*?href=["']([^"']+)["'][\s\S]*?<\/a>/i);
+  const anchorRegex = /<a[\s\S]*?href=["']([^"']+)["'][\s\S]*?<\/a>/i;
+  const anchorMatch = rawBlock.match(anchorRegex);
   if (anchorMatch) {
     const urlMatch = anchorMatch[1].match(YOUTUBE_URL_REGEX);
-    if (urlMatch) {
-      const cleaned = block.replace(anchorMatch[0], '').trim();
-      return { videoId: urlMatch[1], remainder: cleaned };
+    const videoData = createVideoData(anchorMatch, urlMatch);
+    if (videoData) {
+      return videoData;
     }
   }
 
   // 4) URL isolada em uma linha
-  const urlMatch = block.match(YOUTUBE_URL_REGEX);
+  const urlMatch = rawBlock.match(YOUTUBE_URL_REGEX);
   if (urlMatch) {
-    const cleaned = block.replace(urlMatch[0], '').trim();
-    return { videoId: urlMatch[1], remainder: cleaned };
+    const videoData = createVideoData(urlMatch, urlMatch);
+    if (videoData) {
+      return videoData;
+    }
   }
 
   return null;
@@ -222,15 +242,28 @@ const renderContentBlocks = (content) => {
   }
 
   const blocks = content.split(/\r?\n{2,}/).filter((block) => block.trim().length > 0);
+  const elements = [];
 
-  return blocks.map((block, index) => {
+  blocks.forEach((block, index) => {
     const videoData = extractYoutubeData(block);
-    if (videoData && !videoData.remainder) {
-      return renderVideoBlock(videoData.videoId, index);
+
+    if (videoData) {
+      if (videoData.before) {
+        elements.push(renderParagraphBlock(videoData.before, `${index}-before`));
+      }
+
+      elements.push(renderVideoBlock(videoData.videoId, index));
+
+      if (videoData.after) {
+        elements.push(renderParagraphBlock(videoData.after, `${index}-after`));
+      }
+      return;
     }
 
-    return renderParagraphBlock(block, index);
+    elements.push(renderParagraphBlock(block, index));
   });
+
+  return elements;
 };
 
 const fetchArticle = async (editoriaSlug, articleSlug) => {
