@@ -222,42 +222,33 @@ export default async function EditoriaPage({ params }) {
       <section className="relative isolate overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ ...heroStyle, filter: 'brightness(0.75)' }}
+          style={{ ...heroStyle, filter: 'brightness(0.85)' }}
           aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" aria-hidden="true" />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/30 to-black" aria-hidden="true" />
 
-        <div className="relative z-10 mx-auto flex min-h-[60vh] w-full max-w-4xl flex-col items-center justify-center px-6 py-24 text-center">
-          <h1 className="text-4xl font-serif font-bold leading-tight sm:text-6xl">{editoria.title}</h1>
+        <div className="relative z-10 mx-auto flex min-h-[60vh] w-full max-w-5xl items-center justify-center px-6 py-24">
+          <span className="sr-only">{editoria.title}</span>
         </div>
       </section>
 
-      <section className="mx-auto w-full max-w-5xl px-6 py-20">
-        <div className="overflow-hidden rounded-3xl border border-gray-800/70 bg-gray-950/60">
-          <div className="grid grid-cols-1 gap-8 p-10 md:grid-cols-[minmax(0,1fr)_320px]">
-            <div className="space-y-6">
-              <h2 className="text-3xl font-serif font-semibold">Identidade visual</h2>
-              <p className="text-lg text-gray-300">
-                {editoria.description?.trim() ||
-                  'Hub de narrativas visuais e sonoras que explora comunicação, cultura e arte com a curadoria da equipa TRAMA.'}
-              </p>
-              <p className="text-sm text-gray-400">
-                Descubra narrativas recentes, bastidores de produções e conteúdos exclusivos que aprofundam o universo desta editoria.
-              </p>
-            </div>
+      {descriptionImage && (
+        <section className="mx-auto w-full max-w-5xl px-6 py-20">
+          <figure className="relative overflow-hidden rounded-3xl border border-gray-800/70 bg-gray-950/60">
+            <img
+              src={descriptionImage}
+              alt={editoria.description?.trim() || `Descrição visual da editoria ${editoria.title}`}
+              className="h-full w-full object-cover"
+            />
 
-            {descriptionImage && (
-              <div className="overflow-hidden rounded-2xl border border-gray-800/50">
-                <img
-                  src={descriptionImage}
-                  alt={`Identidade da editoria ${editoria.title}`}
-                  className="h-full w-full object-cover"
-                />
-              </div>
+            {(editoria.description?.trim() || editoria.title) && (
+              <figcaption className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/70 to-transparent px-8 py-6 text-lg font-medium text-gray-100">
+                {editoria.description?.trim() || `Descrição visual da editoria ${editoria.title}`}
+              </figcaption>
             )}
-          </div>
-        </div>
-      </section>
+          </figure>
+        </section>
+      )}
 
       <section className="mx-auto w-full max-w-6xl px-6 pb-24">
         {orderedArticles.length > 0 ? (
