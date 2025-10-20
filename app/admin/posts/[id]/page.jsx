@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react';
 
 import { apiClient, resolveAssetUrl } from '@/lib/apiClient';
 
+import { useAdminSession } from '../../AdminSessionContext';
+
 const initialFormState = {
   title: '',
   summary: '',
@@ -17,6 +19,9 @@ const initialFormState = {
 
 // --- COMPONENTE PRINCIPAL DA PÁGINA DE FORMULÁRIO ---
 export default function PostFormPage() {
+  const session = useAdminSession();
+  const { status, permissions } = session;
+  const canManageContent = !!permissions?.canManageContent;
   const [postId, setPostId] = useState(null);
   const [isNew, setIsNew] = useState(false);
 
@@ -31,6 +36,10 @@ export default function PostFormPage() {
   const [initialCover, setInitialCover] = useState('');
 
   useEffect(() => {
+    if (status !== 'ready') {
+      return;
+    }
+
     const pathSegments = window.location.pathname.split('/');
     const id = pathSegments[pathSegments.length - 1];
     setPostId(id);
@@ -87,7 +96,7 @@ export default function PostFormPage() {
     fetchData();
 
     return () => controller.abort();
-  }, []);
+  }, [status]);
 
   useEffect(
     () => () => {
@@ -133,6 +142,10 @@ export default function PostFormPage() {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
+    if (!canManageContent) {
+      setError('Esta conta não possui permissão para guardar alterações.');
+      return;
+    }
     setIsSubmitting(true);
     setError(null);
 
@@ -164,6 +177,21 @@ export default function PostFormPage() {
       setIsSubmitting(false);
     }
   };
+
+  if (status !== 'ready') {
+    return <p className="text-center text-gray-400">A validar permissões…</p>;
+  }
+
+  if (!canManageContent) {
+    return (
+      <div className="bg-gray-900/50 border border-gray-800/60 rounded-xl p-8 text-center text-gray-300">
+        <h1 className="text-3xl font-serif font-bold mb-3">Modo de visualização</h1>
+        <p className="text-gray-400 max-w-2xl mx-auto">
+          Esta conta foi configurada apenas para demonstrar o painel. Apenas o administrador principal pode criar ou editar posts.
+        </p>
+      </div>
+    );
+  }
 
   if (isLoading) return <p className="text-center">A carregar editor...</p>;
   if (error && !isSubmitting) return <p className="text-center text-red-400">Erro: {error}</p>;

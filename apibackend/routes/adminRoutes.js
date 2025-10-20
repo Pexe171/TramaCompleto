@@ -5,9 +5,20 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const { protect, admin } = require('../middleware/authMiddleware');
+const {
+    protect,
+    allowAdminPanelAccess,
+    requireContentManagers,
+    ensurePrimaryAdmin,
+    isPrimaryAdmin,
+} = require('../middleware/authMiddleware');
 const asyncHandler = require('../middleware/asyncHandler');
 const slugify = require('../utils/slugify');
+
+const { hashPassword } = require('../utils/passwordManager');
+const { formatUser } = require('../utils/userFormatter');
+const { logSecurityEvent } = require('../services/securityLogService');
+const { getPrimaryAdminEmail } = require('../utils/primaryAdmin');
 
 const Article = require('../models/Article');
 const Editoria = require('../models/Editoria');
@@ -28,6 +39,45 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+const normalizeEmail = (email) => (email ? email.trim().toLowerCase() : '');
+
+const sanitizeUsernameBase = (value) => {
+    if (!value) {
+        return 'adminviewer';
+    }
+
+    return value
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/[^a-zA-Z0-9]/g, '')
+        .toLowerCase()
+        .slice(0, 24) || 'adminviewer';
+};
+
+const generateUniqueUsername = async (baseValue) => {
+    const base = sanitizeUsernameBase(baseValue);
+    let candidate = base;
+    let suffix = 1;
+
+    while (await User.exists({ username: candidate })) {
+        candidate = `${base}${suffix}`;
+        suffix += 1;
+    }
+
+    return candidate;
+};
+
+const buildAdminPermissions = (user) => {
+    const primaryAdmin = isPrimaryAdmin(user);
+    return {
+        canViewAdmin: true,
+        canManageContent: primaryAdmin,
+        canManageUsers: primaryAdmin,
+        isPrimaryAdmin: primaryAdmin,
+        isReadOnly: !primaryAdmin,
+    };
+};
 
 const isValidHttpUrl = (value) => {
     if (!value || typeof value !== 'string') {
@@ -111,11 +161,25 @@ const uploadEditoriaAssets = upload.fields([
     { name: 'descriptionImage', maxCount: 1 },
 ]);
 
+// --- PERFIL DO ADMINISTRADOR ---
+router.get(
+    '/profile',
+    protect,
+    allowAdminPanelAccess,
+    asyncHandler(async (req, res) => {
+        res.json({
+            user: formatUser(req.user),
+            permissions: buildAdminPermissions(req.user),
+            primaryAdminEmail: getPrimaryAdminEmail(),
+        });
+    })
+);
+
 // --- ROTAS DE GESTÃO DE ARTIGOS ---
 router.get(
     '/articles',
     protect,
-    admin,
+    allowAdminPanelAccess,
     asyncHandler(async (_req, res) => {
         const articles = await Article.find()
             .populate('editoriaId', 'title')
@@ -129,7 +193,8 @@ router.get(
 router.post(
     '/articles',
     protect,
-    admin,
+    requireContentManagers,
+    ensurePrimaryAdmin,
     upload.single('coverImage'),
     asyncHandler(async (req, res) => {
         const { title, summary, content, editoriaId, status, format, videoUrl, isFeatured, frameStyle, tags } = req.body;
@@ -181,6 +246,15 @@ router.post(
         }
 
         const createdArticle = await Article.create(articleData);
+
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'article:create',
+            targetId: createdArticle._id,
+            description: `Artigo criado (${createdArticle.title}).`,
+        });
+
         res.status(201).json(createdArticle);
     })
 );
@@ -188,7 +262,8 @@ router.post(
 router.put(
     '/articles/:id',
     protect,
-    admin,
+    requireContentManagers,
+    ensurePrimaryAdmin,
     upload.single('coverImage'),
     asyncHandler(async (req, res) => {
         const { title, summary, content, editoriaId, status, format, videoUrl, isFeatured, frameStyle, tags } = req.body;
@@ -266,6 +341,16 @@ router.put(
         }
 
         const updatedArticle = await article.save();
+
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'article:update',
+            targetId: updatedArticle._id,
+            description: `Artigo atualizado (${updatedArticle.title}).`,
+            metadata: { fields: Object.keys(req.body || {}) },
+        });
+
         res.json(updatedArticle);
     })
 );
@@ -273,13 +358,22 @@ router.put(
 router.delete(
     '/articles/:id',
     protect,
-    admin,
+    requireContentManagers,
+    ensurePrimaryAdmin,
     asyncHandler(async (req, res) => {
         const article = await Article.findByIdAndDelete(req.params.id);
         if (!article) {
             res.status(404);
             throw new Error('Artigo não encontrado.');
         }
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'article:delete',
+            targetId: req.params.id,
+            description: `Artigo removido (${article.title}).`,
+        });
+
         res.json({ message: 'Artigo removido com sucesso.' });
     })
 );
@@ -288,7 +382,7 @@ router.delete(
 router.get(
     '/editorias',
     protect,
-    admin,
+    allowAdminPanelAccess,
     asyncHandler(async (_req, res) => {
         const editorias = await Editoria.find().sort({ priority: 1, createdAt: -1 }).lean();
         res.json(editorias);
@@ -298,7 +392,8 @@ router.get(
 router.post(
     '/editorias',
     protect,
-    admin,
+    requireContentManagers,
+    ensurePrimaryAdmin,
     uploadEditoriaAssets,
     asyncHandler(async (req, res) => {
         const { title, description, priority, isActive } = req.body;
@@ -339,6 +434,15 @@ router.post(
         }
 
         const createdEditoria = await Editoria.create(editoriaData);
+
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'editoria:create',
+            targetId: createdEditoria._id,
+            description: `Editoria criada (${createdEditoria.title}).`,
+        });
+
         res.status(201).json(createdEditoria);
     })
 );
@@ -346,7 +450,8 @@ router.post(
 router.put(
     '/editorias/:id',
     protect,
-    admin,
+    requireContentManagers,
+    ensurePrimaryAdmin,
     uploadEditoriaAssets,
     asyncHandler(async (req, res) => {
         const { title, description, priority, isActive } = req.body;
@@ -402,6 +507,16 @@ router.put(
         }
 
         const updatedEditoria = await editoria.save();
+
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'editoria:update',
+            targetId: updatedEditoria._id,
+            description: `Editoria atualizada (${updatedEditoria.title}).`,
+            metadata: { fields: Object.keys(req.body || {}) },
+        });
+
         res.json(updatedEditoria);
     })
 );
@@ -409,7 +524,8 @@ router.put(
 router.delete(
     '/editorias/:id',
     protect,
-    admin,
+    requireContentManagers,
+    ensurePrimaryAdmin,
     asyncHandler(async (req, res) => {
         const editoria = await Editoria.findByIdAndDelete(req.params.id);
         if (!editoria) {
@@ -418,6 +534,14 @@ router.delete(
         }
 
         await Article.updateMany({ editoriaId: editoria._id }, { $set: { editoriaId: null } });
+
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'editoria:delete',
+            targetId: req.params.id,
+            description: `Editoria removida (${editoria.title}).`,
+        });
         res.json({ message: 'Editoria removida com sucesso.' });
     })
 );
@@ -426,10 +550,62 @@ router.delete(
 router.get(
     '/users',
     protect,
-    admin,
+    requireContentManagers,
     asyncHandler(async (_req, res) => {
         const users = await User.find().sort({ createdAt: -1 }).lean();
         res.json(users);
+    })
+);
+
+router.post(
+    '/users/viewer',
+    protect,
+    requireContentManagers,
+    ensurePrimaryAdmin,
+    asyncHandler(async (req, res) => {
+        const { email, displayName, password } = req.body || {};
+
+        if (!email || !password) {
+            res.status(400);
+            throw new Error('Email e palavra-passe são obrigatórios para criar o administrador de visualização.');
+        }
+
+        if (password.length < 6) {
+            res.status(400);
+            throw new Error('A palavra-passe deve ter pelo menos 6 caracteres.');
+        }
+
+        const normalizedEmail = normalizeEmail(email);
+
+        const existingUser = await User.findOne({ email: normalizedEmail }).lean();
+        if (existingUser) {
+            res.status(400);
+            throw new Error('Já existe um utilizador com este email.');
+        }
+
+        const username = await generateUniqueUsername(displayName || normalizedEmail.split('@')[0]);
+        const passwordHash = await hashPassword(password);
+
+        const viewerUser = await User.create({
+            username,
+            email: normalizedEmail,
+            passwordHash,
+            role: 'admin_viewer',
+            displayName: displayName ? displayName.trim() : username,
+        });
+
+        await logSecurityEvent({
+            req,
+            actor: req.user,
+            action: 'user:create_admin_viewer',
+            targetId: viewerUser._id,
+            description: `Administrador em modo visualização criado (${viewerUser.email}).`,
+        });
+
+        res.status(201).json({
+            message: 'Administrador em modo visualização criado com sucesso.',
+            user: formatUser(viewerUser),
+        });
     })
 );
 
