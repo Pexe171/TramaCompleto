@@ -324,7 +324,7 @@ Texto seguinte`}
 
             <div className="md:col-span-2">
               <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-2">
-                Conteúdo (Markdown)
+                Conteúdo do artigo
               </label>
               <textarea
                 name="content"
@@ -337,19 +337,19 @@ Texto seguinte`}
               ></textarea>
               <div className="mt-2 space-y-2 text-xs text-gray-500">
                 <p>
-                  Para incorporar um vídeo do YouTube, deixe uma linha em branco antes e outra depois do link. O editor vai
-                  criar o player automaticamente na leitura.
+                  O editor entende parágrafos separados por uma linha em branco, links em formato comum ou Markdown e vídeos
+                  do YouTube copiados como URL, link ou iframe.
                 </p>
                 <pre className="whitespace-pre-wrap rounded-md bg-gray-900/60 px-3 py-2 font-mono text-[11px] text-gray-300">
-{`Texto anterior
+{`Parágrafo anterior
 
 https://youtu.be/ID_DO_VIDEO
 
-Texto seguinte`}
+Próximo parágrafo`}
                 </pre>
                 <p>
-                  Para destacar palavras, utilize o formato <code>{'{{cor|texto}}'}</code>, por exemplo
-                  {' '}<code>{'{{vermelho|urgente}}'}</code> ou <code>{'{{#FFD700|destaque}}'}</code>.
+                  Para destacar palavras, utilize o formato <code>{'{{cor|texto}}'}</code>, por exemplo{' '}
+                  <code>{'{{vermelho|urgente}}'}</code> ou <code>{'{{#FFD700|destaque}}'}</code>.
                 </p>
               </div>
             </div>
