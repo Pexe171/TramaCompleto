@@ -1,3 +1,5 @@
+import { useRef, useState } from 'react';
+
 const defaultImages = [
   'https://www.imglink.io/i/2eaf6a5a-b451-4710-9bb2-fe0d2e557609.jpg',
   'https://www.imglink.io/i/5686fb6d-aefb-4d64-be4a-c6436633d5da.png',
@@ -20,13 +22,6 @@ const defaultImages = [
   'https://www.imglink.io/i/a8b73531-93b9-47a9-b59d-18152ecbd715.jpg',
 ];
 
-const duplicateImages = (images) => {
-  if (!images?.length) {
-    return [...defaultImages, ...defaultImages];
-  }
-  return [...images, ...images];
-};
-
 const splitTitle = (rawTitle) => {
   if (!rawTitle) {
     return { highlight: 'Quem', remainder: 'Somos' };
@@ -42,8 +37,67 @@ const splitTitle = (rawTitle) => {
 };
 
 export default function QuemSomos({ title = 'Quem Somos?', contentHtml, teamImages = defaultImages }) {
-  const carouselImages = duplicateImages(teamImages);
+  const carouselImages = teamImages?.length ? teamImages : defaultImages;
   const formattedTitle = splitTitle(title);
+  const carouselRef = useRef(null);
+  const isDragging = useRef(false);
+  const startX = useRef(0);
+  const scrollStart = useRef(0);
+  const [isPointerActive, setIsPointerActive] = useState(false);
+
+  const stopDragging = (pointerId) => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    if (container.hasPointerCapture?.(pointerId)) {
+      container.releasePointerCapture(pointerId);
+    }
+
+    isDragging.current = false;
+    setIsPointerActive(false);
+  };
+
+  const handlePointerDown = (event) => {
+    const container = carouselRef.current;
+    if (!container) return;
+
+    isDragging.current = true;
+    startX.current = event.clientX;
+    scrollStart.current = container.scrollLeft;
+    setIsPointerActive(true);
+
+    container.setPointerCapture?.(event.pointerId);
+  };
+
+  const handlePointerMove = (event) => {
+    const container = carouselRef.current;
+    if (!container || !isDragging.current) {
+      return;
+    }
+
+    if (event.pointerType === 'mouse' && event.buttons !== 1) {
+      stopDragging(event.pointerId);
+      return;
+    }
+
+    const delta = event.clientX - startX.current;
+    container.scrollLeft = scrollStart.current - delta;
+  };
+
+  const handlePointerUp = (event) => {
+    if (!isDragging.current) return;
+    stopDragging(event.pointerId);
+  };
+
+  const handlePointerLeave = (event) => {
+    if (!isDragging.current) return;
+    stopDragging(event.pointerId);
+  };
+
+  const handlePointerCancel = (event) => {
+    if (!isDragging.current) return;
+    stopDragging(event.pointerId);
+  };
 
   return (
     <section id="quem-somos" className="py-20 md:py-32 bg-black text-gray-200 overflow-hidden">
@@ -78,10 +132,20 @@ export default function QuemSomos({ title = 'Quem Somos?', contentHtml, teamImag
 
       <div className="w-full">
         <h3 className="text-4xl md:text-5xl font-serif mb-12 text-center">Nossa Equipe</h3>
-        <div className="relative w-full overflow-hidden">
-          <div className="flex animate-scroll">
+        <div
+          ref={carouselRef}
+          className={`relative w-full overflow-x-auto overflow-y-hidden ${
+            isPointerActive ? 'cursor-grabbing' : 'cursor-grab'
+          }`}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onPointerCancel={handlePointerCancel}
+        >
+          <div className="flex gap-8 py-2">
             {carouselImages.map((src, index) => (
-              <div key={`${src}-${index}`} className="flex-shrink-0 mx-4">
+              <div key={`${src}-${index}`} className="flex-shrink-0">
                 <img
                   src={src}
                   alt={`Integrante da equipe Trama ${index + 1}`}
