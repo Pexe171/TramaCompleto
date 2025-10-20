@@ -117,7 +117,7 @@ export default function AdminLayout({ children }) {
 
   const filteredNavLinks = navLinks.filter((item) => {
     if (item.href === '/admin/posts/new') {
-      return session.permissions?.canManageContent;
+      return session.permissions?.canManageContent || session.permissions?.isReadOnly;
     }
     return true;
   });
