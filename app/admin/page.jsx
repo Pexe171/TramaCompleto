@@ -4,6 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 
 import { apiClient, resolveAssetUrl } from '@/lib/apiClient';
 
+import { useAdminSession } from './AdminSessionContext';
+
 // --- COMPONENTES DA UI ---
 
 const StatCard = ({ title, value, icon, isLoading }) => (
@@ -29,7 +31,7 @@ const StatCard = ({ title, value, icon, isLoading }) => (
   </div>
 );
 
-const PostRow = ({ post, onDelete }) => {
+const PostRow = ({ post, onDelete, canManageContent }) => {
   const formattedDate = new Date(post.publishedAt || post.createdAt).toLocaleDateString('pt-BR');
   return (
     <tr className="border-b border-gray-800 hover:bg-gray-800/50">
@@ -46,12 +48,18 @@ const PostRow = ({ post, onDelete }) => {
       </td>
       <td className="py-4 px-6 text-gray-400">{formattedDate}</td>
       <td className="py-4 px-6 text-right">
-        <a href={`/admin/posts/${post._id}`} className="text-blue-400 hover:text-blue-300 mr-4 font-semibold">
-          Editar
-        </a>
-        <button onClick={() => onDelete(post._id, post.title)} className="text-red-500 hover:text-red-400 font-semibold">
-          Excluir
-        </button>
+        {canManageContent ? (
+          <div className="flex items-center justify-end space-x-4">
+            <a href={`/admin/posts/${post._id}`} className="text-blue-400 hover:text-blue-300 font-semibold">
+              Editar
+            </a>
+            <button onClick={() => onDelete(post._id, post.title)} className="text-red-500 hover:text-red-400 font-semibold">
+              Excluir
+            </button>
+          </div>
+        ) : (
+          <span className="text-gray-500 text-sm italic">Apenas visualização</span>
+        )}
       </td>
     </tr>
   );
@@ -120,9 +128,137 @@ const ConfirmationModal = ({ isOpen, onClose, onConfirm, title, message }) => {
   );
 };
 
+const AdminViewerForm = ({ canManageUsers, primaryAdminEmail }) => {
+  const initialState = { email: '', displayName: '', password: '' };
+  const [formState, setFormState] = useState(initialState);
+  const [feedback, setFeedback] = useState({ type: 'idle', message: '' });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  if (!canManageUsers) {
+    return null;
+  }
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFormState((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setFeedback({ type: 'idle', message: '' });
+    setIsSubmitting(true);
+    try {
+      const response = await apiClient.post('/admin/users/viewer', formState);
+      setFeedback({
+        type: 'success',
+        message: response?.message || 'Administrador em modo visualização criado com sucesso.',
+      });
+      setFormState(initialState);
+    } catch (error) {
+      setFeedback({ type: 'error', message: error.message || 'Não foi possível criar o administrador convidado.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <section className="mt-12 bg-gray-900/50 rounded-xl p-8 space-y-6 border border-gray-800/60">
+      <div className="space-y-2">
+        <h2 className="text-2xl font-serif font-bold">Adicionar administrador convidado</h2>
+        <p className="text-sm text-gray-400">
+          Crie uma conta com acesso apenas de visualização para demonstrar o painel a outras pessoas sem qualquer risco de
+          alteração de conteúdo.
+        </p>
+        <p className="text-xs text-gray-500">
+          Apenas o administrador principal ({primaryAdminEmail || 'admin@trama.com'}) pode concluir esta operação.
+        </p>
+      </div>
+
+      {feedback.type !== 'idle' && (
+        <div
+          className={`text-sm px-4 py-3 rounded-lg border ${
+            feedback.type === 'error'
+              ? 'border-red-500/40 bg-red-500/10 text-red-300'
+              : 'border-green-500/40 bg-green-500/10 text-green-200'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-3">
+        <div className="md:col-span-1">
+          <label htmlFor="email" className="block text-sm font-medium text-gray-300 mb-1">
+            Email institucional do convidado
+          </label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            value={formState.email}
+            onChange={handleChange}
+            required
+            placeholder="convidado@trama.com"
+            className="w-full bg-gray-950/60 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+
+        <div className="md:col-span-1">
+          <label htmlFor="displayName" className="block text-sm font-medium text-gray-300 mb-1">
+            Nome a exibir no painel
+          </label>
+          <input
+            id="displayName"
+            name="displayName"
+            type="text"
+            value={formState.displayName}
+            onChange={handleChange}
+            placeholder="Convidado VIP"
+            className="w-full bg-gray-950/60 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+
+        <div className="md:col-span-1">
+          <label htmlFor="password" className="block text-sm font-medium text-gray-300 mb-1">
+            Palavra-passe temporária
+          </label>
+          <input
+            id="password"
+            name="password"
+            type="password"
+            value={formState.password}
+            onChange={handleChange}
+            required
+            minLength={6}
+            placeholder="mínimo de 6 caracteres"
+            className="w-full bg-gray-950/60 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-500"
+          />
+        </div>
+
+        <div className="md:col-span-3 flex justify-end">
+          <button
+            type="submit"
+            disabled={isSubmitting}
+            className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 disabled:bg-red-800 font-semibold transition-colors"
+          >
+            {isSubmitting ? 'A criar acesso seguro…' : 'Criar administrador de visualização'}
+          </button>
+        </div>
+      </form>
+    </section>
+  );
+};
+
 // --- COMPONENTE PRINCIPAL DA PÁGINA ---
 
 export default function AdminPage() {
+  const session = useAdminSession();
+  const { status, permissions, user, primaryAdminEmail } = session;
+  const canManageContent = !!permissions?.canManageContent;
+  const canManageUsers = !!permissions?.canManageUsers;
+  const isReadOnly = status === 'ready' && !canManageContent;
+  const displayName = user?.displayName || user?.username || 'Administrador(a)';
+
   const [posts, setPosts] = useState([]);
   const [editorias, setEditorias] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -130,6 +266,10 @@ export default function AdminPage() {
   const [modalState, setModalState] = useState({ isOpen: false, postId: null, postTitle: '' });
 
   useEffect(() => {
+    if (status !== 'ready') {
+      return undefined;
+    }
+
     const controller = new AbortController();
 
     const fetchDashboardData = async () => {
@@ -155,9 +295,13 @@ export default function AdminPage() {
     fetchDashboardData();
 
     return () => controller.abort();
-  }, []);
+  }, [status]);
 
   const openDeleteModal = (postId, postTitle) => {
+    if (!canManageContent) {
+      setError('Esta conta está em modo de visualização. Exclusões não são permitidas.');
+      return;
+    }
     setModalState({ isOpen: true, postId, postTitle });
   };
 
@@ -166,7 +310,14 @@ export default function AdminPage() {
   };
 
   const handleDelete = async () => {
-    if (!modalState.postId) return;
+    if (!modalState.postId || !canManageContent) {
+      closeDeleteModal();
+      if (!canManageContent) {
+        setError('Tentativa de alteração bloqueada. Apenas o administrador principal pode remover posts.');
+      }
+      return;
+    }
+
     try {
       await apiClient.delete(`/admin/articles/${modalState.postId}`);
       setPosts((prevPosts) => prevPosts.filter((post) => post._id !== modalState.postId));
@@ -184,8 +335,17 @@ export default function AdminPage() {
       views: posts.reduce((sum, post) => sum + (post.stats?.views || 0), 0),
       comments: posts.reduce((sum, post) => sum + (post.stats?.commentsCount || 0), 0),
     }),
-    [posts, editorias]
+    [posts, editorias],
   );
+
+  if (status !== 'ready') {
+    return (
+      <div className="text-center text-gray-300 bg-gray-900/40 border border-gray-800/60 p-8 rounded-lg">
+        <p className="text-lg font-semibold">A preparar o painel administrativo seguro…</p>
+        <p className="text-sm text-gray-500 mt-2">Aguarde um instante enquanto validamos as permissões desta sessão.</p>
+      </div>
+    );
+  }
 
   if (error && !posts.length && !editorias.length) {
     return (
@@ -197,21 +357,32 @@ export default function AdminPage() {
     );
   }
 
+  const introText = canManageContent
+    ? 'Organize editorias, publique conteúdos e acompanhe o desempenho das histórias criadas pela equipa.'
+    : 'Sessão em modo de visualização. Explore o painel com total segurança: qualquer tentativa de alteração será bloqueada e registada.';
+
   return (
     <div>
-      <ConfirmationModal
-        isOpen={modalState.isOpen}
-        onClose={closeDeleteModal}
-        onConfirm={handleDelete}
-        title="Confirmar Exclusão"
-        message={`Tem a certeza que deseja excluir permanentemente o artigo "${modalState.postTitle}"? Esta ação não pode ser desfeita.`}
-      />
+      {canManageContent && (
+        <ConfirmationModal
+          isOpen={modalState.isOpen}
+          onClose={closeDeleteModal}
+          onConfirm={handleDelete}
+          title="Confirmar Exclusão"
+          message={`Tem a certeza que deseja excluir permanentemente o artigo "${modalState.postTitle}"? Esta ação não pode ser desfeita.`}
+        />
+      )}
+
+      {isReadOnly && (
+        <div className="mb-6 bg-yellow-500/10 border border-yellow-500/40 text-yellow-200 px-4 py-3 rounded-lg">
+          Acesso apenas para visualização. Alterações são bloqueadas automaticamente e ficam registadas nos relatórios de segurança.
+        </div>
+      )}
+
       <header className="mb-12 flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
         <div>
-          <h1 className="text-4xl font-serif font-bold">Bem-vinda, Helena!</h1>
-          <p className="text-gray-400 mt-1 max-w-xl">
-            Organize editorias, publique conteúdos e acompanhe o desempenho das histórias criadas pela equipa.
-          </p>
+          <h1 className="text-4xl font-serif font-bold">Bem-vinda, {displayName}!</h1>
+          <p className="text-gray-400 mt-1 max-w-xl">{introText}</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3">
           <a
@@ -223,15 +394,17 @@ export default function AdminPage() {
             </svg>
             <span>Gerir editorias</span>
           </a>
-          <a
-            href="/admin/posts/new"
-            className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
-            </svg>
-            <span>Criar novo post</span>
-          </a>
+          {canManageContent && (
+            <a
+              href="/admin/posts/new"
+              className="bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+              </svg>
+              <span>Criar novo post</span>
+            </a>
+          )}
         </div>
       </header>
 
@@ -301,11 +474,15 @@ export default function AdminPage() {
                   </tr>
                 ))
               ) : posts.length > 0 ? (
-                posts.slice(0, 4).map((post) => <PostRow key={post._id} post={post} onDelete={openDeleteModal} />)
+                posts.slice(0, 4).map((post) => (
+                  <PostRow key={post._id} post={post} onDelete={openDeleteModal} canManageContent={canManageContent} />
+                ))
               ) : (
                 <tr>
                   <td colSpan="5" className="py-10 text-center text-gray-400">
-                    Ainda não existem posts publicados. Utilize o botão "Criar novo post" para começar.
+                    {canManageContent
+                      ? 'Ainda não existem posts publicados. Utilize o botão "Criar novo post" para começar.'
+                      : 'Ainda não existem posts publicados.'}
                   </td>
                 </tr>
               )}
@@ -313,6 +490,8 @@ export default function AdminPage() {
           </table>
         </div>
       </div>
+
+      <AdminViewerForm canManageUsers={canManageUsers} primaryAdminEmail={primaryAdminEmail} />
     </div>
   );
 }

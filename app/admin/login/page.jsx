@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
         throw new Error('Resposta inesperada da API.');
       }
 
-      if (response?.role !== 'admin' && response?.role !== 'editor') {
+      if (!['admin', 'editor', 'admin_viewer'].includes(response?.role)) {
         throw new Error('Esta conta não possui permissões de administração.');
       }
 
