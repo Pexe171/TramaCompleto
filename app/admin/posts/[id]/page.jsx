@@ -324,7 +324,7 @@ Texto seguinte`}
 
             <div className="md:col-span-2">
               <label htmlFor="content" className="block text-sm font-medium text-gray-300 mb-2">
-                Conteúdo (Markdown)
+                Conteúdo do artigo
               </label>
               <textarea
                 name="content"
@@ -332,13 +332,18 @@ Texto seguinte`}
                 value={formData.content}
                 onChange={handleInputChange}
                 rows="15"
-                className="w-full bg-gray-800 border-gray-700 rounded-md p-3 font-mono text-sm"
+                spellCheck
+                className="w-full bg-gray-800 border-gray-700 rounded-md p-3 text-base leading-relaxed text-gray-100"
                 required
               ></textarea>
               <div className="mt-2 space-y-2 text-xs text-gray-500">
                 <p>
-                  Para incorporar um vídeo do YouTube, deixe uma linha em branco antes e outra depois do link. O editor vai
-                  criar o player automaticamente na leitura.
+                  Escreva em parágrafos curtos, como faria num editor de blog tradicional. Links comuns continuam clicáveis
+                  e o leitor mantém o espaçamento automaticamente.
+                </p>
+                <p>
+                  Para incorporar um vídeo do YouTube, deixe uma linha em branco antes e outra depois do link completo. O
+                  player é gerado sozinho na página do artigo.
                 </p>
                 <pre className="whitespace-pre-wrap rounded-md bg-gray-900/60 px-3 py-2 font-mono text-[11px] text-gray-300">
 {`Texto anterior
