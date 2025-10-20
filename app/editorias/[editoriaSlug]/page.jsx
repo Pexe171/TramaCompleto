@@ -42,16 +42,23 @@ const fetchEditoria = async (slug) => {
   }
 };
 
+const toSafeNumber = (value, fallback = 0) => {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
+};
+
 const resolveBackgroundStyle = (editoria) => {
   const coverImage = resolveAssetUrl(editoria.coverImage) || FALLBACK_COVER;
   const focusX = editoria.coverImageFocusX ?? 50;
   const focusY = editoria.coverImageFocusY ?? 50;
-  const scale = editoria.coverImageScale ?? 100;
+  const scale = toSafeNumber(editoria.coverImageScale, 100);
+
+  const normalizedScale = Math.min(Math.max(scale, 80), 140);
 
   return {
     backgroundImage: `url(${coverImage})`,
     backgroundPosition: `${focusX}% ${focusY}%`,
-    backgroundSize: `${scale}%`,
+    backgroundSize: normalizedScale === 100 ? 'cover' : `${normalizedScale}%`,
     backgroundRepeat: 'no-repeat',
   };
 };
@@ -73,6 +80,13 @@ const ArticleCard = ({ editoriaSlug, article }) => {
   const coverImage = resolveAssetUrl(article.coverImage);
   const summary = formatArticleSummary(article.summary, article.content);
   const publishedAt = formatDate(article.publishedAt || article.createdAt);
+  const likes = toSafeNumber(article.stats?.likes ?? article.stats?.views, 0);
+  const ratingsAverageValue = toSafeNumber(article.stats?.ratingsAvg, 0);
+  const ratingsCount = toSafeNumber(article.stats?.ratingsCount, 0);
+  const commentsCount = toSafeNumber(article.stats?.commentsCount, 0);
+  const formattedLikes = likes.toLocaleString('pt-BR');
+  const formattedRatingsCount = ratingsCount.toLocaleString('pt-BR');
+  const formattedCommentsCount = commentsCount.toLocaleString('pt-BR');
 
   return (
     <article className="group flex h-full flex-col overflow-hidden rounded-3xl border border-gray-800/60 bg-gray-950/60 transition-colors hover:border-red-500/40">
@@ -103,6 +117,45 @@ const ArticleCard = ({ editoriaSlug, article }) => {
           </h3>
           <p className="text-base leading-relaxed text-gray-300">{summary}</p>
         </div>
+
+        <dl className="grid grid-cols-3 gap-4 text-xs uppercase tracking-[0.3em] text-gray-400">
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-red-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 8.25 12 8.25 12s8.25-4.78 8.25-12z"
+              />
+            </svg>
+            <div>
+              <dt className="sr-only">Curtidas</dt>
+              <dd>{formattedLikes}</dd>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-yellow-300" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path d="M11.48 3.499a.75.75 0 011.04 0l2.146 2.065 2.942.434a.75.75 0 01.416 1.28l-2.13 2.076.503 2.92a.75.75 0 01-1.088.791L12 11.984l-2.808 1.481a.75.75 0 01-1.088-.79l.503-2.92-2.13-2.077a.75.75 0 01.416-1.28l2.942-.434 2.146-2.066z" />
+            </svg>
+            <div className="flex flex-col">
+              <dt className="sr-only">Avaliações</dt>
+              <dd>{ratingsAverageValue.toFixed(1)}</dd>
+              <span className="text-[0.65rem] normal-case tracking-normal text-gray-500">{formattedRatingsCount} avaliações</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <svg className="h-4 w-4 text-blue-300" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M7.5 8.25h9m-9 3H12m-9 2.25c0 1.243 1.507 2.25 3.363 2.25H9.75l4.5 3v-3h.387c1.856 0 3.363-1.007 3.363-2.25V6.75c0-1.243-1.507-2.25-3.363-2.25H6.363C4.507 4.5 3 5.507 3 6.75v6.75z"
+              />
+            </svg>
+            <div>
+              <dt className="sr-only">Comentários</dt>
+              <dd>{formattedCommentsCount}</dd>
+            </div>
+          </div>
+        </dl>
 
         {Array.isArray(article.tags) && article.tags.length > 0 && (
           <div className="flex flex-wrap gap-2">
@@ -160,113 +213,62 @@ export default async function EditoriaPage({ params }) {
   const heroStyle = resolveBackgroundStyle(editoria);
   const descriptionImage = resolveAssetUrl(editoria.descriptionImage);
   const articles = Array.isArray(editoria.articles) ? editoria.articles : [];
-  const latestUpdate = articles[0]?.publishedAt || articles[0]?.createdAt || editoria.updatedAt || editoria.createdAt;
-  const articleCount = articles.length;
+  const orderedArticles = articles
+    .slice()
+    .sort((a, b) => new Date(b.publishedAt || b.createdAt || 0) - new Date(a.publishedAt || a.createdAt || 0));
 
   return (
     <main className="bg-black text-white">
       <section className="relative isolate overflow-hidden">
-        <div className="absolute inset-0" aria-hidden="true">
-          <div className="absolute inset-0 opacity-25" style={heroStyle} />
-          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-black" />
-          <div className="absolute inset-0 bg-gradient-to-r from-black via-transparent to-black" />
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ ...heroStyle, filter: 'brightness(0.75)' }}
+          aria-hidden="true"
+        />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-black/20 to-black" aria-hidden="true" />
+
+        <div className="relative z-10 mx-auto flex min-h-[60vh] w-full max-w-4xl flex-col items-center justify-center px-6 py-24 text-center">
+          <h1 className="text-4xl font-serif font-bold leading-tight sm:text-6xl">{editoria.title}</h1>
         </div>
+      </section>
 
-        <div className="relative z-10 mx-auto flex min-h-[60vh] w-full max-w-5xl flex-col justify-center gap-8 px-6 py-24 text-left">
-          <div className="flex items-center gap-4 text-xs uppercase tracking-[0.4em] text-red-300">
-            <span>Editorial</span>
-            <span className="h-px flex-1 bg-red-500/40" aria-hidden="true" />
-            <span>TRAMA</span>
-          </div>
+      <section className="mx-auto w-full max-w-5xl px-6 py-20">
+        <div className="overflow-hidden rounded-3xl border border-gray-800/70 bg-gray-950/60">
+          <div className="grid grid-cols-1 gap-8 p-10 md:grid-cols-[minmax(0,1fr)_320px]">
+            <div className="space-y-6">
+              <h2 className="text-3xl font-serif font-semibold">Identidade visual</h2>
+              <p className="text-lg text-gray-300">
+                {editoria.description?.trim() ||
+                  'Hub de narrativas visuais e sonoras que explora comunicação, cultura e arte com a curadoria da equipa TRAMA.'}
+              </p>
+              <p className="text-sm text-gray-400">
+                Descubra narrativas recentes, bastidores de produções e conteúdos exclusivos que aprofundam o universo desta editoria.
+              </p>
+            </div>
 
-          <div className="space-y-6">
-            <h1 className="text-4xl font-serif font-bold leading-tight sm:text-6xl">{editoria.title}</h1>
-            <p className="max-w-2xl text-lg text-gray-200 sm:text-xl">
-              {editoria.description?.trim() || 'Hub de narrativas visuais e sonoras que exploram comunicação, cultura e arte com o olhar da equipa TRAMA.'}
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-4 text-sm uppercase tracking-[0.3em] text-gray-400">
-            <span className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-red-200">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6l4 2" />
-              </svg>
-              Actualizado em {formatDate(latestUpdate)}
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full border border-gray-700 bg-gray-900/70 px-4 py-2">
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.75a.75.75 0 01.75.75v12a.75.75 0 01-1.5 0v-12a.75.75 0 01.75-.75zM9 9.75a.75.75 0 01.75.75v9a.75.75 0 01-1.5 0v-9A.75.75 0 019 9.75zM15 3.75a.75.75 0 01.75.75v15a.75.75 0 01-1.5 0v-15A.75.75 0 0115 3.75z" />
-              </svg>
-              {articleCount === 1 ? '1 reportagem publicada' : `${articleCount} reportagens publicadas`}
-            </span>
+            {descriptionImage && (
+              <div className="overflow-hidden rounded-2xl border border-gray-800/50">
+                <img
+                  src={descriptionImage}
+                  alt={`Identidade da editoria ${editoria.title}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+            )}
           </div>
         </div>
       </section>
 
-      <section className="mx-auto grid w-full max-w-6xl gap-12 px-6 py-20 md:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="space-y-10">
-          <div className="flex items-center justify-between">
-            <h2 className="text-3xl font-serif font-semibold">Painel editorial</h2>
-            <Link
-              href="/editorias"
-              className="text-xs font-semibold uppercase tracking-[0.35em] text-gray-500 transition-colors hover:text-red-300"
-            >
-              Ver todas
-            </Link>
+      <section className="mx-auto w-full max-w-6xl px-6 pb-24">
+        {orderedArticles.length > 0 ? (
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+            {orderedArticles.map((article) => (
+              <ArticleCard key={article._id || article.slug} editoriaSlug={editoria.slug} article={article} />
+            ))}
           </div>
-          <p className="text-lg text-gray-300">
-            Cada narrativa aqui publicada reforça o propósito da TRAMA: conectar cinema, comunicação e cultura com profundidade.
-            Explore o acervo e acompanhe os bastidores das produções que fazem desta editoria um hub de histórias.
-          </p>
-
-          {articles.length > 0 ? (
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              {articles.map((article) => (
-                <ArticleCard key={article._id || article.slug} editoriaSlug={editoria.slug} article={article} />
-              ))}
-            </div>
-          ) : (
-            <EmptyState editoria={editoria} />
-          )}
-        </div>
-
-        <aside className="space-y-6 rounded-3xl border border-gray-800/70 bg-gray-900/40 p-8">
-          <div className="space-y-3">
-            <h3 className="text-xl font-serif font-semibold text-white">Identidade visual</h3>
-            <p className="text-sm text-gray-400">
-              Utilize este painel como referência rápida ao montar novas publicações. A imagem abaixo reforça o conceito visual desta editoria.
-            </p>
-          </div>
-
-          <div className="overflow-hidden rounded-2xl border border-gray-800/60 bg-gray-950/60">
-            {descriptionImage ? (
-              <img
-                src={descriptionImage}
-                alt={`Identidade da editoria ${editoria.title}`}
-                className="h-auto w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-48 items-center justify-center bg-gray-900 text-gray-500">
-                <span className="text-xs uppercase tracking-[0.4em]">Sem imagem complementar</span>
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-3 text-sm text-gray-400">
-            <p>
-              <strong className="block text-xs uppercase tracking-[0.35em] text-gray-500">Prioridade editorial</strong>
-              {editoria.priority ?? 0}
-            </p>
-            <p>
-              <strong className="block text-xs uppercase tracking-[0.35em] text-gray-500">Criada em</strong>
-              {formatDate(editoria.createdAt)}
-            </p>
-            <p>
-              <strong className="block text-xs uppercase tracking-[0.35em] text-gray-500">Última revisão</strong>
-              {formatDate(editoria.updatedAt || editoria.createdAt)}
-            </p>
-          </div>
-        </aside>
+        ) : (
+          <EmptyState editoria={editoria} />
+        )}
       </section>
     </main>
   );
