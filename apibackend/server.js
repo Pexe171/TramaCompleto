@@ -17,15 +17,40 @@ app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 
-const allowedOrigins = (process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:3000')
-    .split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+const parseEnvList = (value = '') =>
+    value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+
+const allowedOrigins = parseEnvList(
+    process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:3000'
+);
+const allowedOriginSubstrings = [
+    'devtunnels.ms',
+    ...parseEnvList(process.env.CLIENT_URL_SUBSTRINGS),
+];
 
 app.use((req, res, next) => {
     const requestOrigin = req.headers.origin;
+    let originIsAllowed = false;
 
-    if (requestOrigin && allowedOrigins.includes(requestOrigin)) {
+    if (requestOrigin) {
+        if (allowedOrigins.includes(requestOrigin)) {
+            originIsAllowed = true;
+        } else {
+            try {
+                const { hostname } = new URL(requestOrigin);
+                originIsAllowed = allowedOriginSubstrings.some((substring) =>
+                    hostname.includes(substring)
+                );
+            } catch (error) {
+                originIsAllowed = false;
+            }
+        }
+    }
+
+    if (originIsAllowed) {
         res.header('Access-Control-Allow-Origin', requestOrigin);
         res.header('Access-Control-Allow-Credentials', 'true');
     } else if (!requestOrigin && allowedOrigins.length === 1) {
