@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation';
 
 import { API_BASE_URL, resolveAssetUrl } from '@/lib/apiClient';
 
-const YOUTUBE_REGEX = /https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})(?:[^\s]*)?/i;
+const YOUTUBE_URL_REGEX =
+  /https?:\/\/(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{11})(?:[^\s"'<>)]*)?/i;
 
 const BASE_HIGHLIGHT_CLASS = 'inline-flex items-center px-2 py-0.5 rounded-md font-semibold tracking-wide border';
 
@@ -164,6 +165,53 @@ const renderVideoBlock = (videoId, index) => (
   </div>
 );
 
+const extractYoutubeData = (rawBlock) => {
+  if (!rawBlock) {
+    return null;
+  }
+
+  const block = rawBlock.trim();
+
+  // 1) iframe embed pasted from another blog/editor
+  const iframeMatch = block.match(/<iframe[\s\S]*?src=["']([^"']+)["'][\s\S]*?<\/iframe>/i);
+  if (iframeMatch) {
+    const urlMatch = iframeMatch[1].match(YOUTUBE_URL_REGEX);
+    if (urlMatch) {
+      const cleaned = block.replace(iframeMatch[0], '').trim();
+      return { videoId: urlMatch[1], remainder: cleaned };
+    }
+  }
+
+  // 2) Markdown style link: [texto](https://youtu.be/...)
+  const markdownMatch = block.match(/\[[^\]]*\]\((https?:\/\/[^)]+)\)/i);
+  if (markdownMatch) {
+    const urlMatch = markdownMatch[1].match(YOUTUBE_URL_REGEX);
+    if (urlMatch) {
+      const cleaned = block.replace(markdownMatch[0], '').trim();
+      return { videoId: urlMatch[1], remainder: cleaned };
+    }
+  }
+
+  // 3) Link copiado como <a href="https://youtu.be/...">texto</a>
+  const anchorMatch = block.match(/<a[\s\S]*?href=["']([^"']+)["'][\s\S]*?<\/a>/i);
+  if (anchorMatch) {
+    const urlMatch = anchorMatch[1].match(YOUTUBE_URL_REGEX);
+    if (urlMatch) {
+      const cleaned = block.replace(anchorMatch[0], '').trim();
+      return { videoId: urlMatch[1], remainder: cleaned };
+    }
+  }
+
+  // 4) URL isolada em uma linha
+  const urlMatch = block.match(YOUTUBE_URL_REGEX);
+  if (urlMatch) {
+    const cleaned = block.replace(urlMatch[0], '').trim();
+    return { videoId: urlMatch[1], remainder: cleaned };
+  }
+
+  return null;
+};
+
 const renderContentBlocks = (content) => {
   if (!content) {
     return [
@@ -173,13 +221,12 @@ const renderContentBlocks = (content) => {
     ];
   }
 
-  const blocks = content.split(/\n{2,}/).filter((block) => block.trim().length > 0);
+  const blocks = content.split(/\r?\n{2,}/).filter((block) => block.trim().length > 0);
 
   return blocks.map((block, index) => {
-    const trimmed = block.trim();
-    const videoMatch = trimmed.match(YOUTUBE_REGEX);
-    if (videoMatch && trimmed.replace(YOUTUBE_REGEX, '').trim().length === 0) {
-      return renderVideoBlock(videoMatch[1], index);
+    const videoData = extractYoutubeData(block);
+    if (videoData && !videoData.remainder) {
+      return renderVideoBlock(videoData.videoId, index);
     }
 
     return renderParagraphBlock(block, index);
