@@ -341,38 +341,50 @@ export default function AdminEditoriasPage() {
             </div>
             <div className="space-y-2">
               <label className="block text-sm font-medium text-gray-300">Foco da imagem de capa</label>
-              <div className="grid grid-cols-3 gap-2 text-xs text-gray-400">
-                <label className="flex flex-col">
-                  <span>X (%)</span>
+              <div className="grid gap-4 text-xs text-gray-400 sm:grid-cols-3">
+                <label className="flex flex-col space-y-2">
+                  <span className="flex items-center justify-between text-[11px] uppercase tracking-widest text-gray-500">
+                    <span>Eixo X</span>
+                    <span className="text-gray-200 font-semibold">{formState.coverImageFocusX}%</span>
+                  </span>
                   <input
-                    type="number"
+                    type="range"
                     min="0"
                     max="100"
+                    step="1"
                     value={formState.coverImageFocusX}
                     onChange={handleCoverControlChange('coverImageFocusX')}
-                    className="bg-gray-950/60 border border-gray-700 rounded px-2 py-1"
+                    className="h-1 rounded-full bg-gray-800 accent-red-500"
                   />
                 </label>
-                <label className="flex flex-col">
-                  <span>Y (%)</span>
+                <label className="flex flex-col space-y-2">
+                  <span className="flex items-center justify-between text-[11px] uppercase tracking-widest text-gray-500">
+                    <span>Eixo Y</span>
+                    <span className="text-gray-200 font-semibold">{formState.coverImageFocusY}%</span>
+                  </span>
                   <input
-                    type="number"
+                    type="range"
                     min="0"
                     max="100"
+                    step="1"
                     value={formState.coverImageFocusY}
                     onChange={handleCoverControlChange('coverImageFocusY')}
-                    className="bg-gray-950/60 border border-gray-700 rounded px-2 py-1"
+                    className="h-1 rounded-full bg-gray-800 accent-red-500"
                   />
                 </label>
-                <label className="flex flex-col">
-                  <span>Zoom (%)</span>
+                <label className="flex flex-col space-y-2">
+                  <span className="flex items-center justify-between text-[11px] uppercase tracking-widest text-gray-500">
+                    <span>Zoom</span>
+                    <span className="text-gray-200 font-semibold">{formState.coverImageScale}%</span>
+                  </span>
                   <input
-                    type="number"
+                    type="range"
                     min="80"
                     max="300"
+                    step="1"
                     value={formState.coverImageScale}
                     onChange={handleCoverControlChange('coverImageScale')}
-                    className="bg-gray-950/60 border border-gray-700 rounded px-2 py-1"
+                    className="h-1 rounded-full bg-gray-800 accent-red-500"
                   />
                 </label>
               </div>
@@ -400,7 +412,7 @@ export default function AdminEditoriasPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 disabled:bg-red-800 font-semibold transition-colors"
+              className="px-6 py-3 rounded-lg bg-red-600 hover:bg-red-700 disabled:bg-red-800 font-semibold text-white transition-colors"
             >
               {isSubmitting ? 'A guardar…' : 'Guardar editoria'}
             </button>
