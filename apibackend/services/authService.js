@@ -88,7 +88,7 @@ const authenticateUser = async ({ email, password }) => {
 
 const authenticatePrivilegedUser = async (credentials) => {
     const result = await authenticateUser(credentials);
-    if (!['admin', 'editor'].includes(result.user.role)) {
+    if (!['admin', 'editor', 'admin_viewer'].includes(result.user.role)) {
         throw createHttpError(403, 'Credenciais válidas, mas sem permissão de acesso.');
     }
     return {

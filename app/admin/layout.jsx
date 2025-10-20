@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
+import { AdminSessionContext, getDefaultAdminSession } from './AdminSessionContext';
 import { apiClient, clearStoredToken } from '@/lib/apiClient';
 
 const Icon = ({ path }) => (
@@ -24,11 +25,15 @@ export default function AdminLayout({ children }) {
   const isLoginRoute = pathname === '/admin/login';
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authError, setAuthError] = useState(null);
+  const [session, setSession] = useState(getDefaultAdminSession());
+  const [isLoadingSession, setIsLoadingSession] = useState(true);
 
   useEffect(() => {
     if (isLoginRoute) {
       setIsCheckingAuth(false);
+      setIsLoadingSession(false);
       setAuthError(null);
+      setSession(getDefaultAdminSession());
       return;
     }
 
@@ -36,11 +41,36 @@ export default function AdminLayout({ children }) {
 
     if (!hasToken) {
       setAuthError('Sessão expirada. Faça login novamente.');
+      setSession(getDefaultAdminSession());
+      setIsCheckingAuth(false);
+      setIsLoadingSession(false);
       router.replace('/admin/login');
       return;
     }
+    const fetchSession = async () => {
+      setIsCheckingAuth(true);
+      setIsLoadingSession(true);
+      try {
+        const data = await apiClient.get('/admin/profile');
+        setSession({
+          status: 'ready',
+          user: data.user,
+          permissions: data.permissions,
+          primaryAdminEmail: data.primaryAdminEmail || null,
+        });
+        setAuthError(null);
+      } catch (error) {
+        setAuthError(error.message || 'Sessão expirada. Faça login novamente.');
+        setSession(getDefaultAdminSession());
+        clearStoredToken();
+        router.replace('/admin/login');
+      } finally {
+        setIsCheckingAuth(false);
+        setIsLoadingSession(false);
+      }
+    };
 
-    setIsCheckingAuth(false);
+    fetchSession();
   }, [isLoginRoute, router]);
 
   const handleLogout = useCallback(async () => {
@@ -51,6 +81,7 @@ export default function AdminLayout({ children }) {
       // vamos limpar o token local para evitar inconsistências.
     } finally {
       clearStoredToken();
+      setSession(getDefaultAdminSession());
       router.push('/admin/login');
     }
   }, [router]);
@@ -59,7 +90,7 @@ export default function AdminLayout({ children }) {
     return <>{children}</>;
   }
 
-  if (isCheckingAuth) {
+  if (isCheckingAuth || isLoadingSession) {
     return (
       <div className="min-h-screen bg-black text-gray-200 flex items-center justify-center">
         <p className="text-sm text-gray-400">A validar as suas credenciais...</p>
@@ -84,57 +115,64 @@ export default function AdminLayout({ children }) {
     );
   }
 
+  const filteredNavLinks = navLinks.filter((item) => {
+    if (item.href === '/admin/posts/new') {
+      return session.permissions?.canManageContent;
+    }
+    return true;
+  });
+
   return (
-    <div className="min-h-screen bg-black text-gray-200 flex">
-      <aside className="w-64 bg-gray-900/50 p-6 flex flex-col justify-between fixed h-full">
-        <div>
-          <div className="mb-10">
-            <Link href="/">
-              <img
-                src="https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png"
-                alt="Logo TRAMA"
-                className="w-40 mx-auto"
-              />
-            </Link>
-            <p className="text-center text-xs text-gray-500 mt-2 uppercase tracking-widest">Painel Admin</p>
+    <AdminSessionContext.Provider value={session}>
+      <div className="min-h-screen bg-black text-gray-200 flex">
+        <aside className="w-64 bg-gray-900/50 p-6 flex flex-col justify-between fixed h-full">
+          <div>
+            <div className="mb-10">
+              <Link href="/">
+                <img
+                  src="https://i.postimg.cc/6pMB855R/ID-VISUAL-TRAMA-8-3.png"
+                  alt="Logo TRAMA"
+                  className="w-40 mx-auto"
+                />
+              </Link>
+              <p className="text-center text-xs text-gray-500 mt-2 uppercase tracking-widest">Painel Admin</p>
+            </div>
+
+            <nav className="flex flex-col space-y-3">
+              {filteredNavLinks.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className={`flex items-center space-x-3 text-lg py-2 px-4 rounded-lg transition-colors ${
+                      isActive
+                        ? 'bg-red-500/20 text-red-400 font-semibold'
+                        : 'hover:bg-gray-700/50'
+                    }`}
+                  >
+                    <Icon path={item.icon} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              })}
+            </nav>
           </div>
 
-          <nav className="flex flex-col space-y-3">
-            {navLinks.map((item) => {
-              const isActive = pathname === item.href;
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={`flex items-center space-x-3 text-lg py-2 px-4 rounded-lg transition-colors ${
-                    isActive
-                      ? 'bg-red-500/20 text-red-400 font-semibold'
-                      : 'hover:bg-gray-700/50'
-                  }`}
-                >
-                  <Icon path={item.icon} />
-                  <span>{item.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
-        </div>
+          <div>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="w-full flex items-center justify-center space-x-3 text-lg py-2 px-4 rounded-lg hover:bg-gray-700/50 transition-colors text-gray-500 hover:text-red-400"
+            >
+              <Icon path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+              <span>Sair</span>
+            </button>
+          </div>
+        </aside>
 
-        <div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="w-full flex items-center justify-center space-x-3 text-lg py-2 px-4 rounded-lg hover:bg-gray-700/50 transition-colors text-gray-500 hover:text-red-400"
-          >
-            <Icon path="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-            <span>Sair</span>
-          </button>
-        </div>
-      </aside>
-
-      <main className="flex-1 ml-64 p-8 md:p-12">
-        {children}
-      </main>
-    </div>
+        <main className="flex-1 ml-64 p-8 md:p-12">{children}</main>
+      </div>
+    </AdminSessionContext.Provider>
   );
 }

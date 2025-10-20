@@ -1,6 +1,8 @@
 // Middleware de autenticação e autorização
 const User = require('../models/User');
 const { verifyAuthToken } = require('../utils/tokenManager');
+const { logSecurityEvent } = require('../services/securityLogService');
+const { isPrimaryAdmin } = require('../utils/primaryAdmin');
 
 const extractTokenFromHeaders = (req) => {
     const { authorization } = req.headers || {};
@@ -72,12 +74,51 @@ const optionalAuth = async (req, res, next) => {
     }
 };
 
-// Middleware para restringir acesso a Admins e Editores
-const admin = (req, res, next) => {
-    if (req.user && (req.user.role === 'admin' || req.user.role === 'editor')) {
-        return next();
+const hasRole = (user, roles = []) => {
+    if (!user) {
+        return false;
     }
-    return res.status(403).json({ message: 'Acesso negado. Requer permissão de Administrador ou Editor.' });
+    return roles.includes(user.role);
 };
 
-module.exports = { protect, optionalAuth, admin };
+const allowAdminPanelAccess = (req, res, next) => {
+    if (hasRole(req.user, ['admin', 'editor', 'admin_viewer'])) {
+        return next();
+    }
+    return res.status(403).json({ message: 'Acesso negado. Requer permissão administrativa.' });
+};
+
+const requireContentManagers = (req, res, next) => {
+    if (hasRole(req.user, ['admin', 'editor'])) {
+        return next();
+    }
+    return res.status(403).json({ message: 'Acesso negado. Requer permissão de Administrador.' });
+};
+
+const ensurePrimaryAdmin = async (req, res, next) => {
+    if (isPrimaryAdmin(req.user)) {
+        return next();
+    }
+
+    await logSecurityEvent({
+        req,
+        actor: req.user,
+        action: 'unauthorized_admin_mutation',
+        status: 'blocked',
+        description: 'Tentativa de alteração administrativa bloqueada para um utilizador que não é o administrador principal.',
+    });
+
+    return res.status(403).json({
+        message: 'Apenas o administrador principal pode executar esta ação.',
+    });
+};
+
+module.exports = {
+    protect,
+    optionalAuth,
+    admin: requireContentManagers,
+    allowAdminPanelAccess,
+    requireContentManagers,
+    ensurePrimaryAdmin,
+    isPrimaryAdmin,
+};
