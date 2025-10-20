@@ -164,6 +164,12 @@ const renderVideoBlock = (videoId, index) => (
   </div>
 );
 
+const stripHtmlTags = (value) =>
+  value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 const renderContentBlocks = (content) => {
   if (!content) {
     return [
@@ -177,8 +183,9 @@ const renderContentBlocks = (content) => {
 
   return blocks.map((block, index) => {
     const trimmed = block.trim();
-    const videoMatch = trimmed.match(YOUTUBE_REGEX);
-    if (videoMatch && trimmed.replace(YOUTUBE_REGEX, '').trim().length === 0) {
+    const normalized = stripHtmlTags(trimmed);
+    const videoMatch = normalized.match(YOUTUBE_REGEX);
+    if (videoMatch && normalized.replace(YOUTUBE_REGEX, '').trim().length === 0) {
       return renderVideoBlock(videoMatch[1], index);
     }
 
