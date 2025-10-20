@@ -184,12 +184,90 @@ export default function PostFormPage() {
 
   if (!canManageContent) {
     return (
-      <div className="bg-gray-900/50 border border-gray-800/60 rounded-xl p-8 text-center text-gray-300">
-        <h1 className="text-3xl font-serif font-bold mb-3">Modo de visualização</h1>
-        <p className="text-gray-400 max-w-2xl mx-auto">
-          Esta conta foi configurada apenas para demonstrar o painel. Apenas o administrador principal pode criar ou editar posts.
-        </p>
-      </div>
+      <section className="space-y-12">
+        <div className="bg-gray-900/50 border border-gray-800/60 rounded-xl p-8 text-center text-gray-300">
+          <h1 className="text-3xl font-serif font-bold mb-3">Modo de visualização</h1>
+          <p className="text-gray-400 max-w-2xl mx-auto">
+            Esta conta foi configurada apenas para demonstrar o painel. Apenas o administrador principal pode criar ou editar
+            posts.
+          </p>
+        </div>
+
+        <div className="space-y-6">
+          <header className="space-y-2 text-center md:text-left">
+            <p className="text-xs uppercase tracking-[0.35em] text-red-400">Demonstração interativa</p>
+            <h2 className="text-3xl font-serif font-bold text-white">Como formatar links e vídeos no conteúdo</h2>
+            <p className="text-sm text-gray-400">
+              A secção abaixo replica exactamente como o leitor verá um artigo publicado, incluindo a incorporação automática de
+              vídeos do YouTube.
+            </p>
+          </header>
+
+          <article className="rounded-3xl border border-gray-800 bg-gray-950/60 p-8 space-y-6 shadow-lg shadow-black/30">
+            <header className="space-y-3">
+              <p className="text-xs uppercase tracking-[0.35em] text-red-400">Exemplo prático</p>
+              <h3 className="text-3xl font-serif font-bold text-white">Guia rápido para incorporar links e vídeos</h3>
+              <p className="text-sm text-gray-400">
+                Utilize este roteiro como referência ao redigir um novo post na plataforma.
+              </p>
+            </header>
+
+            <p className="text-base leading-relaxed text-gray-200">
+              Aqui começa o primeiro parágrafo do artigo. Você pode escrever sobre qualquer assunto, comentar uma entrevista ou
+              apenas usar este texto como um marcador. <strong className="text-red-200">Lembre-se</strong> de que a formatação é
+              importante para a legibilidade e que links simples são transformados automaticamente em elementos clicáveis.
+            </p>
+
+            <p className="text-base leading-relaxed text-gray-200">
+              Este é o segundo parágrafo. Continue a desenvolver a ideia introduzida anteriormente, adicione citações, listas ou
+              destaque palavras com o formato {'{{cor|texto}}'}, por exemplo <code>{'{{vermelho|urgente}}'}</code> ou
+              {' '}<code>{'{{#FFD700|destaque}}'}</code>.
+            </p>
+
+            <div className="rounded-3xl border border-red-500/40 bg-black shadow-lg shadow-red-900/30 overflow-hidden">
+              <div className="relative pt-[56.25%]">
+                <iframe
+                  src="https://www.youtube.com/embed/Qr0w4w9WgXQ"
+                  title="Exemplo de vídeo incorporado do YouTube"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="absolute inset-0 h-full w-full"
+                ></iframe>
+              </div>
+            </div>
+
+            <p className="text-base leading-relaxed text-gray-200">
+              O vídeo acima foi incorporado automaticamente. Basta deixar uma linha em branco antes e outra depois do link do
+              YouTube e o leitor construirá o player. Se desejar, inclua uma legenda com um{' '}
+              <a
+                href="https://www.youtube.com/watch?v=Qr0w4w9WgXQ"
+                target="_blank"
+                rel="noreferrer"
+                className="text-red-300 underline decoration-dotted underline-offset-4 hover:text-red-200"
+              >
+                acesso directo ao vídeo
+              </a>
+              .
+            </p>
+
+            <div className="rounded-2xl border border-gray-800 bg-gray-900/60 p-6 text-sm text-gray-300 space-y-4">
+              <h4 className="text-sm font-semibold uppercase tracking-[0.3em] text-gray-400">Boas práticas</h4>
+              <ul className="list-disc space-y-2 pl-5 text-gray-400">
+                <li>Separe os parágrafos com uma linha em branco para garantir a criação correcta dos blocos.</li>
+                <li>Coloque o link completo do YouTube em uma linha isolada para gerar o iframe automaticamente.</li>
+                <li>Use o padrão {'{{cor|texto}}'} para evidenciar palavras-chave sem recorrer a HTML manual.</li>
+              </ul>
+              <pre className="whitespace-pre-wrap rounded-md bg-gray-950/60 px-4 py-3 font-mono text-xs text-gray-300">
+{`Texto anterior
+
+https://youtu.be/Qr0w4w9WgXQ
+
+Texto seguinte`}
+              </pre>
+            </div>
+          </article>
+        </div>
+      </section>
     );
   }
 
