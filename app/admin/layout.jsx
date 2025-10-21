@@ -87,6 +87,29 @@ export default function AdminLayout({ children }) {
     }
   }, [router]);
 
+  const toggleMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen((previous) => !previous);
+  }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    setIsMobileMenuOpen(false);
+  }, []);
+
+  useEffect(() => {
+    closeMobileMenu();
+  }, [pathname, closeMobileMenu]);
+
+  useEffect(() => {
+    if (isMobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isMobileMenuOpen]);
+
   if (isLoginRoute) {
     return <>{children}</>;
   }
@@ -122,29 +145,6 @@ export default function AdminLayout({ children }) {
     }
     return true;
   });
-
-  const toggleMobileMenu = useCallback(() => {
-    setIsMobileMenuOpen((previous) => !previous);
-  }, []);
-
-  const closeMobileMenu = useCallback(() => {
-    setIsMobileMenuOpen(false);
-  }, []);
-
-  useEffect(() => {
-    closeMobileMenu();
-  }, [pathname, closeMobileMenu]);
-
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
-    return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isMobileMenuOpen]);
 
   return (
     <AdminSessionContext.Provider value={session}>
