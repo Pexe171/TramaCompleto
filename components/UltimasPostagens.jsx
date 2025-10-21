@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 import { resolveAssetUrl } from '@/lib/apiClient';
 
 const SOCIAL_LINKS = [
