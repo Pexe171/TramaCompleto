@@ -23,38 +23,68 @@ const parseEnvList = (value = '') =>
         .map((item) => item.trim())
         .filter(Boolean);
 
-const allowedOrigins = parseEnvList(
-    process.env.CLIENT_URLS || process.env.CLIENT_URL || 'http://localhost:3000'
+const rawConfiguredOrigins = process.env.CLIENT_URLS || process.env.CLIENT_URL || '';
+const configuredOrigins = parseEnvList(rawConfiguredOrigins);
+const defaultLocalOrigins = parseEnvList(
+    process.env.CLIENT_LOCAL_URLS || 'http://localhost:3000,http://127.0.0.1:3000'
 );
-const allowedOriginSubstrings = [
-    'devtunnels.ms',
-    ...parseEnvList(process.env.CLIENT_URL_SUBSTRINGS),
-];
+const allowedOrigins = Array.from(
+    new Set([...defaultLocalOrigins, ...configuredOrigins])
+);
 
-app.use((req, res, next) => {
-    const requestOrigin = req.headers.origin;
-    let originIsAllowed = false;
+const configuredOriginSubstrings = parseEnvList(process.env.CLIENT_URL_SUBSTRINGS);
+const allowedOriginSubstrings = ['devtunnels.ms', ...configuredOriginSubstrings];
 
-    if (requestOrigin) {
-        if (allowedOrigins.includes(requestOrigin)) {
-            originIsAllowed = true;
-        } else {
-            try {
-                const { hostname } = new URL(requestOrigin);
-                originIsAllowed = allowedOriginSubstrings.some((substring) =>
-                    hostname.includes(substring)
-                );
-            } catch (error) {
-                originIsAllowed = false;
-            }
+const shouldFallbackToRequestOrigin =
+    rawConfiguredOrigins.trim().length === 0 && configuredOriginSubstrings.length === 0;
+
+const fallbackOriginsLogged = new Set();
+const invalidOriginsLogged = new Set();
+
+const resolveAllowedOrigin = (requestOrigin) => {
+    if (!requestOrigin) {
+        if (allowedOrigins.length === 1) {
+            return allowedOrigins[0];
+        }
+        return null;
+    }
+
+    if (allowedOrigins.includes(requestOrigin)) {
+        return requestOrigin;
+    }
+
+    try {
+        const { hostname } = new URL(requestOrigin);
+        if (allowedOriginSubstrings.some((substring) => hostname.includes(substring))) {
+            return requestOrigin;
+        }
+    } catch (error) {
+        if (!invalidOriginsLogged.has(requestOrigin)) {
+            console.warn('Origem inválida recebida no cabeçalho Origin:', requestOrigin);
+            invalidOriginsLogged.add(requestOrigin);
         }
     }
 
-    if (originIsAllowed) {
-        res.header('Access-Control-Allow-Origin', requestOrigin);
+    if (shouldFallbackToRequestOrigin && requestOrigin !== 'null') {
+        if (!fallbackOriginsLogged.has(requestOrigin)) {
+            console.warn(
+                `[CORS] Origem "${requestOrigin}" não configurada explicitamente. Aplicando fallback automático.`
+            );
+            fallbackOriginsLogged.add(requestOrigin);
+        }
+        return requestOrigin;
+    }
+
+    return null;
+};
+
+app.use((req, res, next) => {
+    const requestOrigin = req.headers.origin;
+    const originToAllow = resolveAllowedOrigin(requestOrigin);
+
+    if (originToAllow) {
+        res.header('Access-Control-Allow-Origin', originToAllow);
         res.header('Access-Control-Allow-Credentials', 'true');
-    } else if (!requestOrigin && allowedOrigins.length === 1) {
-        res.header('Access-Control-Allow-Origin', allowedOrigins[0]);
     }
 
     const existingVaryHeader = res.get('Vary');
