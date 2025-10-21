@@ -16,10 +16,10 @@ const InstagramIcon = () => (
 
 const Footer = () => (
   <footer className="border-t border-red-500/30 bg-black/80 py-8 text-center text-xs text-gray-400 sm:text-sm">
-    <div className="flex flex-col items-center gap-3 px-4 sm:flex-row sm:justify-center sm:gap-4">
-      <span className="font-semibold uppercase tracking-[0.35em] text-red-400">Powered by Codex</span>
+    <div className="flex flex-col items-center gap-3 px-4 text-center sm:flex-row sm:justify-center sm:gap-4 sm:text-left">
+      <span className="font-semibold uppercase tracking-[0.35em] text-red-400">Trama</span>
       <span className="hidden text-gray-600 sm:inline">•</span>
-      <span className="text-gray-300">Copyright Codado Por David Henrique - Eng de Software</span>
+      <span className="text-gray-300">Portal desenvolvido com carinho pela equipe do Trama.</span>
       <a
         href="https://www.instagram.com/david.devloli"
         target="_blank"
