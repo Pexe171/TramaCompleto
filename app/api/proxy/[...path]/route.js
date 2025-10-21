@@ -4,6 +4,30 @@ import { getServerApiBaseUrl } from '@/lib/apiConfig';
 
 const backendBaseUrl = getServerApiBaseUrl();
 
+const trimTrailingSlash = (value = '') => value.replace(/\/+$/, '');
+
+const stripApiSuffix = (value = '') => {
+  if (!value) {
+    return value;
+  }
+
+  try {
+    const url = new URL(value);
+    const segments = url.pathname.split('/').filter(Boolean);
+    if (segments[segments.length - 1] === 'api') {
+      segments.pop();
+      url.pathname = segments.length ? `/${segments.join('/')}` : '/';
+    }
+    url.search = '';
+    url.hash = '';
+    return url.toString();
+  } catch (_error) {
+    return value.replace(/\/?api\/?$/i, '');
+  }
+};
+
+const backendOrigin = backendBaseUrl ? trimTrailingSlash(stripApiSuffix(backendBaseUrl)) : null;
+
 const DISALLOWED_REQUEST_HEADERS = new Set([
   'connection',
   'content-length',
@@ -30,6 +54,19 @@ const DISALLOWED_RESPONSE_HEADERS = new Set([
 
 const joinPathSegments = (segments = []) => segments.filter(Boolean).join('/');
 
+const selectBaseUrlForPath = (pathSuffix) => {
+  if (!pathSuffix) {
+    return backendBaseUrl;
+  }
+
+  const [firstSegment] = pathSuffix.split('/');
+  if (firstSegment && firstSegment.toLowerCase() === 'uploads' && backendOrigin) {
+    return backendOrigin;
+  }
+
+  return backendBaseUrl;
+};
+
 const buildTargetUrl = (request, params) => {
   if (!backendBaseUrl) {
     return null;
@@ -37,7 +74,8 @@ const buildTargetUrl = (request, params) => {
 
   const { search } = request.nextUrl;
   const pathSuffix = joinPathSegments(params?.path);
-  const normalizedBase = backendBaseUrl.replace(/\/$/, '');
+  const baseForRequest = selectBaseUrlForPath(pathSuffix);
+  const normalizedBase = baseForRequest ? baseForRequest.replace(/\/$/, '') : '';
   const normalizedPath = pathSuffix ? `/${pathSuffix.replace(/^\/+/, '')}` : '';
   return `${normalizedBase}${normalizedPath}${search}`;
 };
