@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import { resolveAssetUrl } from '@/lib/apiClient';
 
 const SOCIAL_LINKS = [
@@ -164,22 +162,11 @@ export default function UltimasPostagens({ posts = [] }) {
   return (
     <section className="py-20 md:py-24 bg-black text-white">
       <div className="container mx-auto px-6">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-12 gap-6">
-          <div>
-            <h2 className="text-4xl md:text-5xl font-serif">Últimas Postagens</h2>
-            <p className="text-gray-400 max-w-xl mt-2">
-              Explore as histórias mais recentes publicadas pela equipa do Trama.
-            </p>
-          </div>
-          <Link
-            href="/editorias"
-            className="inline-flex items-center space-x-2 text-sm uppercase tracking-widest text-red-400 hover:text-red-300"
-          >
-            <span>Ver todas as editorias</span>
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7"></path>
-            </svg>
-          </Link>
+        <div className="mb-12 text-center md:text-left">
+          <h2 className="text-4xl md:text-5xl font-serif">Últimas Postagens</h2>
+          <p className="text-gray-400 max-w-xl mx-auto md:mx-0 mt-2">
+            Explore as histórias mais recentes publicadas pela equipa do Trama.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
