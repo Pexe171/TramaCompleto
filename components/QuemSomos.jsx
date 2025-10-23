@@ -1,163 +1,108 @@
-"use client";
+import Link from 'next/link';
 
-import { useRef, useState } from 'react';
-
-const defaultImages = [
-  'https://www.imglink.io/i/2eaf6a5a-b451-4710-9bb2-fe0d2e557609.jpg',
-  'https://www.imglink.io/i/5686fb6d-aefb-4d64-be4a-c6436633d5da.png',
-  'https://www.imglink.io/i/f417bd19-b749-45d7-99fb-58fcabc2a5d8.jpg',
-  'https://www.imglink.io/i/2f3d802c-cba6-4b9e-a1d7-67bac2fda5aa.jpg',
-  'https://www.imglink.io/i/92a028c1-7664-4544-a758-50cbd772a771.jpg',
-  'https://www.imglink.io/i/32ad4dc9-d9f8-4d18-867c-6c882d083d76.jpg',
-  'https://www.imglink.io/i/41fa1c06-fc3c-4711-b740-c9b1edd6b364.jpg',
-  'https://www.imglink.io/i/aa20b0b5-d59d-4a44-bd70-320e8d74aacb.jpg',
-  'https://www.imglink.io/i/6ca26850-0c6a-4d9e-9b65-de87bc421fa6.jpg',
-  'https://www.imglink.io/i/f4efaed3-fd42-4071-8242-6fef2d50e29b.jpg',
-  'https://www.imglink.io/i/3ad10f61-29e7-4438-ba71-c574a810b2f7.jpg',
-  'https://www.imglink.io/i/ddac4276-b588-4957-92df-16d3bd58a805.jpg',
-  'https://www.imglink.io/i/be65b483-490e-4628-b698-a5b9190acf50.jpg',
-  'https://www.imglink.io/i/970f1134-8aa1-4e12-a247-6e5396c192df.jpg',
-  'https://www.imglink.io/i/f69a8c6a-1435-47d4-a08b-9b347c6f6bd4.jpg',
-  'https://www.imglink.io/i/de902473-ee7c-4ef1-a7f2-83159b151f02.jpg',
-  'https://www.imglink.io/i/5e61ce9a-d740-4542-88bf-6eba8636e1a8.jpg',
-  'https://www.imglink.io/i/d046c98f-38d1-4dbb-8a48-abbd101a57fb.jpg',
-  'https://www.imglink.io/i/a8b73531-93b9-47a9-b59d-18152ecbd715.jpg',
-];
+const DecorativeStar = ({ className }) => (
+  <svg
+    viewBox="0 0 64 64"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={className}
+    aria-hidden="true"
+  >
+    <path
+      d="M32 0L39.28 18.72 58 26 39.28 33.28 32 52 24.72 33.28 6 26l18.72-7.28L32 0Z"
+      fill="currentColor"
+    />
+  </svg>
+);
 
 const splitTitle = (rawTitle) => {
   if (!rawTitle) {
-    return { highlight: 'Quem', remainder: 'Somos' };
+    return { highlight: 'Quem', remainder: 'Somos?' };
   }
 
-  const parts = rawTitle.split(' ');
+  const parts = rawTitle.trim().split(/\s+/);
   if (parts.length === 1) {
     return { highlight: parts[0], remainder: '' };
   }
 
   const [highlight, ...rest] = parts;
-  return { highlight, remainder: rest.join(' ') };
+  const remainder = rest.join(' ');
+  return { highlight, remainder };
 };
 
-export default function QuemSomos({ title = 'Quem Somos?', contentHtml, teamImages = defaultImages }) {
-  const carouselImages = teamImages?.length ? teamImages : defaultImages;
+const defaultContent = `
+  <p>
+    Somos o <strong>Trama</strong>, um portal de cinema e comunicação criado por estudantes de
+    Relações Públicas da UFAM. Apaixonados pela sétima arte, investigamos estratégias de
+    comunicação que conectam o público a grandes narrativas audiovisuais.
+  </p>
+  <p>
+    Entre entrevistas, críticas, listas e curiosidades, exploramos os bastidores da produção
+    cinematográfica e os impactos culturais que nascem nas telas. Nosso compromisso é contar boas
+    histórias com sensibilidade, técnica e um olhar amazônico.
+  </p>
+`;
+
+export default function QuemSomos({ title = 'Quem Somos?', contentHtml }) {
   const formattedTitle = splitTitle(title);
-  const carouselRef = useRef(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollStart = useRef(0);
-  const [isPointerActive, setIsPointerActive] = useState(false);
-
-  const stopDragging = (pointerId) => {
-    const container = carouselRef.current;
-    if (!container) return;
-
-    if (container.hasPointerCapture?.(pointerId)) {
-      container.releasePointerCapture(pointerId);
-    }
-
-    isDragging.current = false;
-    setIsPointerActive(false);
-  };
-
-  const handlePointerDown = (event) => {
-    const container = carouselRef.current;
-    if (!container) return;
-
-    isDragging.current = true;
-    startX.current = event.clientX;
-    scrollStart.current = container.scrollLeft;
-    setIsPointerActive(true);
-
-    container.setPointerCapture?.(event.pointerId);
-  };
-
-  const handlePointerMove = (event) => {
-    const container = carouselRef.current;
-    if (!container || !isDragging.current) {
-      return;
-    }
-
-    if (event.pointerType === 'mouse' && event.buttons !== 1) {
-      stopDragging(event.pointerId);
-      return;
-    }
-
-    const delta = event.clientX - startX.current;
-    container.scrollLeft = scrollStart.current - delta;
-  };
-
-  const handlePointerUp = (event) => {
-    if (!isDragging.current) return;
-    stopDragging(event.pointerId);
-  };
-
-  const handlePointerLeave = (event) => {
-    if (!isDragging.current) return;
-    stopDragging(event.pointerId);
-  };
-
-  const handlePointerCancel = (event) => {
-    if (!isDragging.current) return;
-    stopDragging(event.pointerId);
-  };
+  const resolvedContent = contentHtml || defaultContent;
 
   return (
-    <section id="quem-somos" className="py-20 md:py-32 bg-black text-gray-200 overflow-hidden">
-      <div className="container mx-auto px-6 max-w-3xl text-center">
-        <h2 className="text-6xl md:text-7xl font-serif mb-4">
-          <span className="font-script text-red-500 text-8xl">{formattedTitle.highlight}</span>{' '}
-          {formattedTitle.remainder}
-        </h2>
+    <section
+      id="quem-somos"
+      className="relative overflow-hidden bg-[#fdf7f7] py-28 text-slate-900"
+    >
+      <div className="pattern-stars pointer-events-none absolute inset-0 opacity-40" aria-hidden="true" />
 
-        <div className="relative mb-24">
-          <div className="absolute -top-6 left-1/2 -translate-x-1/2 z-10">
+      <div className="relative mx-auto flex max-w-5xl flex-col items-center px-6 text-center">
+        <div className="relative inline-flex flex-col items-center gap-6">
+          <div className="absolute -top-10 left-1/2 h-44 w-44 -translate-x-1/2 opacity-90">
             <img
               src="https://i.postimg.cc/JzhT4TB6/ID-VISUAL-TRAMA-7-3.png"
-              alt="Ícone Trama"
-              className="w-28 h-28 drop-shadow-[0_0_15px_#e63946]"
+              alt=""
+              className="h-full w-full object-contain"
+              aria-hidden="true"
             />
           </div>
-          <div className="bg-gray-900/50 pt-24 pb-12 px-8 rounded-3xl space-y-4">
-            {contentHtml ? (
-              <div
-                className="text-xl md:text-2xl leading-relaxed text-gray-300 space-y-4"
-                dangerouslySetInnerHTML={{ __html: contentHtml }}
-              />
-            ) : (
-              <p className="text-xl md:text-2xl leading-relaxed text-gray-300">
-                Somos o <span className="text-red-500 font-semibold">Trama</span>, um portal de cinema e comunicação criado por estudantes de Relações Públicas da UFAM, apaixonados pela sétima arte. Nosso objetivo é explorar as estratégias de comunicação que conectam o público ao universo cinematográfico.
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
 
-      <div className="w-full">
-        <h3 className="text-4xl md:text-5xl font-serif mb-12 text-center">Nossa Equipe</h3>
-        <div
-          ref={carouselRef}
-          className={`relative w-full overflow-x-auto overflow-y-hidden ${
-            isPointerActive ? 'cursor-grabbing' : 'cursor-grab'
-          }`}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerLeave}
-          onPointerCancel={handlePointerCancel}
-        >
-          <div className="flex gap-8 py-2">
-            {carouselImages.map((src, index) => (
-              <div key={`${src}-${index}`} className="flex-shrink-0">
-                <img
-                  src={src}
-                  alt={`Integrante da equipe Trama ${index + 1}`}
-                  className="w-64 h-64 md:w-72 md:h-72 object-cover rounded-full shadow-lg shadow-red-500/20"
-                  loading="lazy"
-                />
-              </div>
-            ))}
+          <h2 className="relative flex flex-col items-center gap-2 text-5xl md:text-6xl">
+            <span className="font-script text-7xl text-red-600 md:text-8xl">{formattedTitle.highlight}</span>
+            <span className="font-serif uppercase tracking-[0.35em] text-slate-900 md:text-[2.75rem]">
+              {formattedTitle.remainder || 'Somos?'}
+            </span>
+          </h2>
+
+          <div className="pointer-events-none absolute -left-16 top-12 hidden h-12 w-12 text-red-500/60 sm:block">
+            <DecorativeStar className="h-full w-full" />
+          </div>
+          <div className="pointer-events-none absolute -right-16 top-4 hidden h-10 w-10 text-slate-900/40 md:block">
+            <DecorativeStar className="h-full w-full" />
           </div>
         </div>
+
+        <div className="relative mt-16 w-full max-w-3xl">
+          <div className="absolute -top-12 -left-12 h-28 w-28 rotate-12 rounded-full bg-red-500/15 blur-3xl" aria-hidden="true" />
+          <div className="absolute -bottom-12 -right-10 h-24 w-24 -rotate-6 rounded-full bg-red-400/20 blur-3xl" aria-hidden="true" />
+
+          <div className="relative rounded-[3rem] border border-black/5 bg-white/90 px-10 py-14 text-lg leading-relaxed shadow-[0_30px_60px_rgba(0,0,0,0.08)] backdrop-blur">
+            <div
+              className="space-y-6 text-justify text-base leading-relaxed text-slate-700 md:text-lg"
+              dangerouslySetInnerHTML={{ __html: resolvedContent }}
+            />
+          </div>
+
+          <div className="pointer-events-none absolute -right-20 -bottom-16 hidden h-24 w-24 rotate-6 text-red-500/50 lg:block">
+            <DecorativeStar className="h-full w-full" />
+          </div>
+        </div>
+
+        <Link
+          href="#editorias"
+          className="mt-14 inline-flex flex-col items-center gap-2 text-sm uppercase tracking-[0.45em] text-slate-800 transition-colors hover:text-red-600"
+        >
+          <span className="font-serif text-base text-slate-500">Conheça as nossas</span>
+          <span className="font-script text-5xl text-red-600 md:text-6xl">Editorias</span>
+        </Link>
       </div>
     </section>
   );
