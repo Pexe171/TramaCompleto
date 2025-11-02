@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 
 const defaultImages = [
   'https://www.imglink.io/i/2eaf6a5a-b451-4710-9bb2-fe0d2e557609.jpg',
@@ -22,7 +22,18 @@ const defaultImages = [
   'https://www.imglink.io/i/5e61ce9a-d740-4542-88bf-6eba8636e1a8.jpg',
   'https://www.imglink.io/i/d046c98f-38d1-4dbb-8a48-abbd101a57fb.jpg',
   'https://www.imglink.io/i/a8b73531-93b9-47a9-b59d-18152ecbd715.jpg',
+  'https://www.imglink.io/i/7306c2d2-8997-4308-86ad-0722d85b02aa.png',
+  'https://www.imglink.io/i/ff46d561-e605-4285-86f4-6e1f26657618.png',
+  'https://www.imglink.io/i/26215aec-dca1-4c79-81c1-3dcf1b17097d.png',
+  'https://www.imglink.io/i/9b371dcf-d170-4c66-b41c-69c4785c75b3.png',
+  'https://www.imglink.io/i/60fa33c4-92d7-4eed-a3d9-8cbf16accf50.png',
+  'https://www.imglink.io/i/4bf524c5-42bd-4874-9635-d02f219f5698.png',
+  'https://www.imglink.io/i/3afb5b89-5dea-4911-84e5-ae1061add954.png',
+  'https://www.imglink.io/i/2e348982-7c01-4e4c-97b7-78ca9100c37c.png',
+  'https://www.imglink.io/i/a94d053d-0778-4040-b563-a51f8f0b32fa.png',
+  'https://www.imglink.io/i/57b297dc-2313-4d2e-a1cf-0c3dc687fae6.png'
 ];
+
 
 const splitTitle = (rawTitle) => {
   if (!rawTitle) {
@@ -42,64 +53,43 @@ export default function QuemSomos({ title = 'Quem Somos?', contentHtml, teamImag
   const carouselImages = teamImages?.length ? teamImages : defaultImages;
   const formattedTitle = splitTitle(title);
   const carouselRef = useRef(null);
-  const isDragging = useRef(false);
-  const startX = useRef(0);
-  const scrollStart = useRef(0);
-  const [isPointerActive, setIsPointerActive] = useState(false);
+  const [showPrev, setShowPrev] = useState(false);
+  const [showNext, setShowNext] = useState(false);
 
-  const stopDragging = (pointerId) => {
-    const container = carouselRef.current;
-    if (!container) return;
-
-    if (container.hasPointerCapture?.(pointerId)) {
-      container.releasePointerCapture(pointerId);
-    }
-
-    isDragging.current = false;
-    setIsPointerActive(false);
+  const handleScroll = () => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const isAtStart = el.scrollLeft === 0;
+    const isAtEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 2; // -2 for precision
+    setShowPrev(!isAtStart);
+    setShowNext(!isAtEnd);
   };
-
-  const handlePointerDown = (event) => {
-    const container = carouselRef.current;
-    if (!container) return;
-
-    isDragging.current = true;
-    startX.current = event.clientX;
-    scrollStart.current = container.scrollLeft;
-    setIsPointerActive(true);
-
-    container.setPointerCapture?.(event.pointerId);
+  
+  const scroll = (direction) => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const scrollAmount = el.clientWidth * 0.8;
+    const newScrollLeft = el.scrollLeft + (direction === 'next' ? scrollAmount : -scrollAmount);
+    el.scrollTo({ left: newScrollLeft, behavior: 'smooth' });
   };
+  
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    
+    handleScroll(); // Check on initial render
+    el.addEventListener('scroll', handleScroll);
+    
+    // Check again after images might have loaded
+    const checkOnLoad = () => setTimeout(handleScroll, 500);
+    window.addEventListener('load', checkOnLoad)
 
-  const handlePointerMove = (event) => {
-    const container = carouselRef.current;
-    if (!container || !isDragging.current) {
-      return;
-    }
+    return () => {
+      el.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('load', checkOnLoad);
+    };
+  }, [carouselImages]);
 
-    if (event.pointerType === 'mouse' && event.buttons !== 1) {
-      stopDragging(event.pointerId);
-      return;
-    }
-
-    const delta = event.clientX - startX.current;
-    container.scrollLeft = scrollStart.current - delta;
-  };
-
-  const handlePointerUp = (event) => {
-    if (!isDragging.current) return;
-    stopDragging(event.pointerId);
-  };
-
-  const handlePointerLeave = (event) => {
-    if (!isDragging.current) return;
-    stopDragging(event.pointerId);
-  };
-
-  const handlePointerCancel = (event) => {
-    if (!isDragging.current) return;
-    stopDragging(event.pointerId);
-  };
 
   return (
     <section id="quem-somos" className="py-20 md:py-32 bg-black text-gray-200 overflow-hidden">
@@ -134,20 +124,14 @@ export default function QuemSomos({ title = 'Quem Somos?', contentHtml, teamImag
 
       <div className="w-full">
         <h3 className="text-4xl md:text-5xl font-serif mb-12 text-center">Nossa Equipe</h3>
-        <div
-          ref={carouselRef}
-          className={`relative w-full overflow-x-auto overflow-y-hidden ${
-            isPointerActive ? 'cursor-grabbing' : 'cursor-grab'
-          }`}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerLeave}
-          onPointerCancel={handlePointerCancel}
-        >
-          <div className="flex gap-8 py-2">
+        <div className="relative w-full max-w-7xl mx-auto px-4">
+          <div
+            ref={carouselRef}
+            className="flex gap-8 py-2 overflow-x-auto no-scrollbar"
+            style={{ scrollSnapType: 'x mandatory' }}
+          >
             {carouselImages.map((src, index) => (
-              <div key={`${src}-${index}`} className="flex-shrink-0">
+              <div key={`${src}-${index}`} className="flex-shrink-0" style={{ scrollSnapAlign: 'start' }}>
                 <img
                   src={src}
                   alt={`Integrante da equipe Trama ${index + 1}`}
@@ -157,8 +141,30 @@ export default function QuemSomos({ title = 'Quem Somos?', contentHtml, teamImag
               </div>
             ))}
           </div>
+          
+          {showPrev && (
+            <button 
+              onClick={() => scroll('prev')}
+              className="absolute top-1/2 left-0 md:-left-4 -translate-y-1/2 bg-gray-800/50 hover:bg-gray-700/80 text-white w-12 h-12 rounded-full flex items-center justify-center transition-opacity z-10"
+              aria-label="Anterior"
+            >
+              &#x2190;
+            </button>
+          )}
+
+          {showNext && (
+            <button 
+              onClick={() => scroll('next')}
+              className="absolute top-1/2 right-0 md:-right-4 -translate-y-1/2 bg-gray-800/50 hover:bg-gray-700/80 text-white w-12 h-12 rounded-full flex items-center justify-center transition-opacity z-10"
+              aria-label="Próximo"
+            >
+              &#x2192;
+            </button>
+          )}
+
         </div>
       </div>
     </section>
   );
 }
+

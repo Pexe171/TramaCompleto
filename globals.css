@@ -2,27 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-@keyframes scroll {
-  0% {
-    transform: translateX(0);
-  }
-  100% {
-    transform: translateX(-50%);
-  }
-}
-
-.animate-scroll {
-  animation: scroll 60s linear infinite;
-}
-
-.grab-cursor {
-  cursor: grab;
-}
-
-.grabbing-cursor {
-  cursor: grabbing;
-}
-
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
@@ -32,3 +11,8 @@
   scrollbar-width: none;
 }
 
+/* Adiciona um efeito de fade nas laterais do carrossel */
+.mask-fade-x {
+  -webkit-mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0%, black 10%, black 90%, transparent 100%);
+}
