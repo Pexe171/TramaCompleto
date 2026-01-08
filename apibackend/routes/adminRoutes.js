@@ -204,13 +204,15 @@ router.post(
             throw new Error('Título e conteúdo são obrigatórios.');
         }
 
-        let editoria = null;
-        if (editoriaId) {
-            editoria = await Editoria.findById(editoriaId);
-            if (!editoria) {
-                res.status(400);
-                throw new Error('Editoria informada não foi encontrada.');
-            }
+        if (!editoriaId) {
+            res.status(400);
+            throw new Error('É obrigatório vincular uma editoria ao post. Crie uma editoria no painel e vincule antes de publicar.');
+        }
+
+        const editoria = await Editoria.findById(editoriaId);
+        if (!editoria) {
+            res.status(400);
+            throw new Error('Editoria informada não foi encontrada.');
         }
 
         const slug = slugify(title);
@@ -224,7 +226,7 @@ router.post(
             title: title.trim(),
             summary: summary ? summary.trim() : undefined,
             content,
-            editoriaId: editoria ? editoria._id : null,
+            editoriaId: editoria._id,
             status: status || 'rascunho',
             format: format || 'texto',
             videoUrl: videoUrl ? videoUrl.trim() : undefined,
@@ -274,15 +276,17 @@ router.put(
             throw new Error('Artigo não encontrado.');
         }
 
-        if (editoriaId) {
+        if (editoriaId !== undefined) {
+            if (!editoriaId) {
+                res.status(400);
+                throw new Error('É obrigatório vincular uma editoria ao post. Crie uma editoria no painel e vincule antes de publicar.');
+            }
             const editoria = await Editoria.findById(editoriaId);
             if (!editoria) {
                 res.status(400);
                 throw new Error('Editoria informada não foi encontrada.');
             }
             article.editoriaId = editoria._id;
-        } else if (editoriaId === null || editoriaId === '') {
-            article.editoriaId = null;
         }
 
         if (title) {
@@ -527,13 +531,17 @@ router.delete(
     requireContentManagers,
     ensurePrimaryAdmin,
     asyncHandler(async (req, res) => {
+        const linkedArticles = await Article.countDocuments({ editoriaId: req.params.id });
+        if (linkedArticles > 0) {
+            res.status(400);
+            throw new Error('Existem posts vinculados a esta editoria. Antes de remover, mova os posts para outra editoria.');
+        }
+
         const editoria = await Editoria.findByIdAndDelete(req.params.id);
         if (!editoria) {
             res.status(404);
             throw new Error('Editoria não encontrada.');
         }
-
-        await Article.updateMany({ editoriaId: editoria._id }, { $set: { editoriaId: null } });
 
         await logSecurityEvent({
             req,
