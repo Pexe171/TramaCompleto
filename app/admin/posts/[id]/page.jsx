@@ -34,6 +34,7 @@ export default function PostFormPage() {
   const [objectUrl, setObjectUrl] = useState(null);
   const [existingCover, setExistingCover] = useState('');
   const [initialCover, setInitialCover] = useState('');
+  const hasEditorias = editorias.length > 0;
 
   useEffect(() => {
     if (status !== 'ready') {
@@ -144,6 +145,14 @@ export default function PostFormPage() {
     event.preventDefault();
     if (!canManageContent) {
       setError('Esta conta não possui permissão para guardar alterações.');
+      return;
+    }
+    if (!hasEditorias) {
+      setError('Nenhuma editoria disponível. Crie uma editoria e faça o vínculo antes de publicar.');
+      return;
+    }
+    if (!formData.editoriaId) {
+      setError('É obrigatório vincular uma editoria ao post. Crie uma editoria e selecione antes de publicar.');
       return;
     }
     setIsSubmitting(true);
@@ -362,14 +371,26 @@ Próximo parágrafo`}
               <label htmlFor="editoriaId" className="block text-sm font-medium text-gray-300 mb-2">
                 Editoria
               </label>
+              {!hasEditorias && (
+                <div className="mb-3 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-4 py-3 text-sm text-yellow-200">
+                  Nenhuma editoria encontrada. Crie uma editoria no menu de editorias antes de publicar este post.
+                  <a href="/admin/editorias" className="ml-1 underline underline-offset-4 text-yellow-100">
+                    Ir para editorias
+                  </a>
+                  .
+                </div>
+              )}
               <select
                 name="editoriaId"
                 id="editoriaId"
                 value={formData.editoriaId}
                 onChange={handleInputChange}
                 className="w-full bg-gray-800 border-gray-700 rounded-md p-3"
+                required
               >
-                <option value="">Sem Categoria</option>
+                <option value="" disabled>
+                  Selecione uma editoria
+                </option>
                 {editorias.map((editoria) => (
                   <option key={editoria._id} value={editoria._id}>
                     {editoria.title}

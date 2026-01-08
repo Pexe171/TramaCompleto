@@ -22,7 +22,7 @@ const articleSchema = new mongoose.Schema(
         editoriaId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Editoria',
-            default: null,
+            required: true,
         },
         tags: { type: [String], default: [] },
         status: {
